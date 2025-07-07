@@ -1,6 +1,7 @@
+version: '3.8'
+
 services:
   nginx:
-    # 今回はカスタム設定なので、ローカルの `nginx/` ディレクトリを参照する
     build: ./nginx
     ports:
       - "80:80"
@@ -8,17 +9,24 @@ services:
       - backend
       - frontend
 
-  # バックエンド
   backend:
     build: ./backend
+    # Redisに接続するための環境変数を追加
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./database:/app/database
+    # Redisコンテナが起動してからバックエンドが起動するように設定
+    depends_on:
+      - redis
 
-  # フロントエンド
   frontend:
     build: ./frontend
-    # ホストのファイルをコンテナに同期し、変更が即時反映されるようにする
     volumes:
       - ./frontend:/app
-      # node_modulesはコンテナ内のものを使い、ホストと同期しない
       - /app/node_modules
+
+  # Redisサービスを新規追加
+  redis:
+    image: redis:alpine
+    restart: always
