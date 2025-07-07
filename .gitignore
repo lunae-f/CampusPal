@@ -1,0 +1,27 @@
+# Python/FastAPI (Backend)
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+*.sqlite3
+
+# Node.js/Vue (Frontend)
+node_modules/
+dist/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Secrets (もしあれば)
+.env
+.env.*
+!.env.example
