@@ -51,7 +51,11 @@ watch(
   transition: background-color 0.3s, opacity 0.3s;
 }
 .has-data { background-color: #f9f9f9; }
-.is-older-attempt { opacity: 0.5; text-decoration: line-through; }
+.is-older-attempt {
+  background-color: #aaadaf !important; /* 背景色を濃いグレーに変更 */
+  opacity: 0.6; /* 透明度を少し調整 */
+  text-decoration: line-through;
+}
 .is-older-attempt:hover { opacity: 1; }
 .is-duplicate { background-color: #fff3e0 !important; }
 .col-code { display: flex; gap: 8px; align-items: center; }
