@@ -42,20 +42,16 @@ watch(
   </div>
 </template>
 
-<style scoped>
+<<style scoped>
 .syllabus-row {
   display: grid;
-  /* 2列目と3列目の幅を入れ替え */
-  grid-template-columns: 80px 120px 100px 160px 1fr 120px 50px 80px;
+  /* ヘッダーの変更に合わせて修正 */
+  grid-template-columns: 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px; align-items: center; border-bottom: 1px solid #eee; padding: 8px 4px; min-height: 50px; font-size: 0.9em;
   transition: background-color 0.3s, opacity 0.3s;
 }
 .has-data { background-color: #f9f9f9; }
-.is-older-attempt {
-  background-color: #aaadaf !important; /* 背景色を濃いグレーに変更 */
-  opacity: 0.6; /* 透明度を少し調整 */
-  text-decoration: line-through;
-}
+.is-older-attempt { background-color: #aaadaf !important; opacity: 0.6; text-decoration: line-through; }
 .is-older-attempt:hover { opacity: 1; }
 .is-duplicate { background-color: #fff3e0 !important; }
 .col-code { display: flex; gap: 8px; align-items: center; }
