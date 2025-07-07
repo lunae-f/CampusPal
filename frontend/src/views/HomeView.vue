@@ -97,10 +97,32 @@ const rowMetadata = computed(() => { const metadata = {}; const kougicdCounts = 
 const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.evaluation && row.syllabusData?.course_name && !rowMetadata.value[row.id]?.isOlderAttempt);});
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; totalCredits += credits; } const minGpa = totalCredits > 0 ? (totalMinGpProduct / totalCredits).toFixed(3) : '0.000'; const maxGpa = totalCredits > 0 ? (totalMaxGpProduct / totalCredits).toFixed(3) : '0.000'; return { totalCredits, minGpa, maxGpa }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
-const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
-const addNewRow = () => { rows.value.push({ id: rows.value.length, rishunen: '2024', kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
-const clearRowData = (rowToClear) => { rowToClear.evaluation = ''; rowToClear.syllabusData = null; rowToClear.isLoading = false; rowToClear.error = null; };
+const handleFetch = async (row) => {
+  row.isLoading = true; row.error = null;
+  try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; }
+};
+const addNewRow = () => {
+  // 現在の最後の行を取得
+  const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null;
+  // 最後の行の年度を使う。なければ'2024'をデフォルトにする
+  const newYear = lastRow ? lastRow.rishunen : '2024';
 
+  rows.value.push({ 
+    id: rows.value.length, 
+    rishunen: newYear, // 修正箇所
+    kougicd: '', 
+    evaluation: '', 
+    syllabusData: null, 
+    isLoading: false, 
+    error: null 
+  });
+};
+const clearRowData = (rowToClear) => {
+  rowToClear.evaluation = '';
+  rowToClear.syllabusData = null;
+  rowToClear.isLoading = false;
+  rowToClear.error = null;
+};
 // onMountedも読み込みデータの形式変更に対応
 onMounted(() => {
   const savedDataString = localStorage.getItem(STORAGE_KEY);
