@@ -3,7 +3,11 @@ import requests
 from bs4 import BeautifulSoup
 import uvicorn
 
-app = FastAPI()
+app = FastAPI(
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
 
 BASE_URL = "https://websrv.tcu.ac.jp/tcu_web_v3/slbssbdr.do"
 

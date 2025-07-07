@@ -1,7 +1,24 @@
 services:
+  nginx:
+    # 今回はカスタム設定なので、ローカルの `nginx/` ディレクトリを参照する
+    build: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+
+  # バックエンド
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
     volumes:
       - ./database:/app/database
+
+  # フロントエンド
+  frontend:
+    build: ./frontend
+    # ホストのファイルをコンテナに同期し、変更が即時反映されるようにする
+    volumes:
+      - ./frontend:/app
+      # node_modulesはコンテナ内のものを使い、ホストと同期しない
+      - /app/node_modules
