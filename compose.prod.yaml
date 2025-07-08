@@ -2,7 +2,7 @@ services:
   nginx:
     build:
       context: ./nginx
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     ports:
       - "80:80"
     depends_on:
@@ -12,17 +12,12 @@ services:
     build: ./backend
     environment:
       - REDIS_URL=redis://redis:6379
-    volumes:
-      - ./backend:/app
     depends_on:
       - redis
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      dockerfile: Dockerfile.prod
   redis:
     image: redis:alpine
     restart: always
