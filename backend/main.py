@@ -22,7 +22,6 @@ LABEL_TO_KEY_MAP = {
 }
 
 def get_syllabus_data(kougicd: str, rishunen: str, crclumcd: str):
-    # (この関数の中身は変更なし)
     params = {
         "value(risyunen)": rishunen, "value(semekikn)": "1",
         "value(kougicd)": kougicd, "value(crclumcd)": crclumcd,
