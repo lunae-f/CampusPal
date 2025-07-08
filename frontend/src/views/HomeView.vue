@@ -9,7 +9,18 @@ const crclumcd = ref('s24160');
 const rows = ref([]);
 const fileInput = ref(null);
 
-// ファイル操作のためのロジック
+
+// 複数の行のシラバス情報を順番に取得する関数
+const fetchSyllabusDataForRows = async (rowsToFetch) => {
+  for (const row of rowsToFetch) {
+    if (row.kougicd && row.rishunen) {
+      await handleFetch(row);
+      // 次のリクエストまでに200ミリ秒の待機時間を設ける
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+};
+
 const saveToFile = () => {
   try {
     const simplifiedRows = rows.value
@@ -17,7 +28,7 @@ const saveToFile = () => {
       .map(row => ({
         rishunen: row.rishunen,
         kougicd: row.kougicd,
-        evaluation: row.evaluation || '',
+        evaluation: row.evaluation || ''
       }));
     const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows };
     const jsonString = JSON.stringify(dataToSave, null, 2);
@@ -35,9 +46,11 @@ const saveToFile = () => {
     console.error(error);
   }
 };
+
 const triggerFileInput = () => {
   fileInput.value.click();
 };
+
 const handleFileLoad = (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -52,7 +65,9 @@ const handleFileLoad = (event) => {
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].split(',');
           if (parts.length >= 3) {
-            simplifiedRows.push({ rishunen: parts[0].trim(), kougicd: parts[1].trim(), evaluation: parts[2].trim() });
+            simplifiedRows.push({
+              rishunen: parts[0].trim(), kougicd: parts[1].trim(), evaluation: parts[2].trim()
+            });
           }
         }
         loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value };
@@ -63,9 +78,8 @@ const handleFileLoad = (event) => {
         crclumcd.value = loadedData.crclumcd || crclumcd.value;
         const newRows = loadedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null }));
         rows.value = newRows;
-        rows.value.forEach(row => {
-          if (row.kougicd && row.rishunen) { handleFetch(row); }
-        });
+        // 逐次実行関数を呼び出す
+        fetchSyllabusDataForRows(rows.value);
         alert('データを読み込みました。');
       } else { throw new Error('ファイルの形式が正しくありません。'); }
     } catch (error) {
@@ -85,9 +99,31 @@ const creditsByCategory = computed(() => { const categoryTotals = {}; for (const
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
 const clearRowData = (rowToClear) => { rowToClear.evaluation = ''; rowToClear.syllabusData = null; rowToClear.isLoading = false; rowToClear.error = null; };
-onMounted(() => { const savedDataString = localStorage.getItem(STORAGE_KEY); if (savedDataString) { try { const savedData = JSON.parse(savedDataString); if (savedData.rows.length > 0) { crclumcd.value = savedData.crclumcd; const newRows = savedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null })); rows.value = newRows; rows.value.forEach(row => { if (row.kougicd && row.rishunen) { handleFetch(row); } }); return; } } catch (e) { console.error("Failed to parse localStorage data:", e); localStorage.removeItem(STORAGE_KEY); } } rows.value = Array.from({ length: 15 }, (_, i) => ({ id: i, rishunen: '2024', kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null })); });
+
+onMounted(() => {
+  const savedDataString = localStorage.getItem(STORAGE_KEY);
+  if (savedDataString) {
+    try {
+      const savedData = JSON.parse(savedDataString);
+      if (savedData.rows.length > 0) {
+        crclumcd.value = savedData.crclumcd;
+        const newRows = savedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null }));
+        rows.value = newRows;
+        // 逐次実行関数を呼び出す
+        fetchSyllabusDataForRows(rows.value);
+        return;
+      }
+    } catch (e) {
+      console.error("Failed to parse localStorage data:", e);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+  rows.value = Array.from({ length: 15 }, (_, i) => ({ id: i, rishunen: '2024', kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }));
+});
+
 watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' })); const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }; localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave)); if (newRows.length > 0) { const lastRow = newRows[newRows.length - 1]; if (lastRow.kougicd || lastRow.evaluation) { addNewRow(); } } }, { deep: true });
 </script>
+
 
 <template>
   <main class="container">
