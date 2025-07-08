@@ -5,6 +5,7 @@ Course Management and f-GPA Calculator for TCU.
 
 ```sh
 git clone https://github.com/lunae-f/CampusPal
+cd CampusPal/
 docker compose up -f 'compose.prod.yaml' -d
 ```
 
