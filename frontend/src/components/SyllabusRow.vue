@@ -13,7 +13,7 @@ const props = defineProps({
   isOlderAttempt: Boolean,
   crclumcd: String,
 });
-const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row']);
+const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'drag-start']);
 
 const debounceTimer = ref(null);
 
@@ -68,8 +68,8 @@ watch(
 
 <template>
   <div class="syllabus-row" :class="{ 'is-success': syllabusData, 'is-error': error, 'is-older-attempt': isOlderAttempt, 'is-duplicate': isDuplicate }">
-    <div class="col-handle">
-      <span class="drag-handle">⠿</span>
+    <div class="col-handle" @dragstart="$emit('drag-start')">
+      <span class="drag-handle" :draggable="true">⠿</span>
     </div>
     <div class="col-index">
       {{ rowIndex + 1 }}
@@ -129,7 +129,7 @@ watch(
 }
 .drag-handle {
   cursor: grab;
-  color: #ccc;
+  color: #75757586;
   font-size: 1.5em;
   padding: 0 5px;
   text-decoration: none;
