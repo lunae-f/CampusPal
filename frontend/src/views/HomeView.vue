@@ -32,12 +32,12 @@ const onDrop = (targetIndex) => {
 const saveToFile = () => {
   try {
     const simplifiedRows = rows.value
-      .filter(row => row.kougicd)
-      .map(row => ({
-        rishunen: row.rishunen,
-        kougicd: row.kougicd,
-        evaluation: row.evaluation || ''
-      }));
+    .filter(row => row.kougicd)
+    .map(row => ({
+      rishunen: row.rishunen,
+      kougicd: row.kougicd,
+      evaluation: row.evaluation || ''
+    }));
     const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows };
     const jsonString = JSON.stringify(dataToSave, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -171,6 +171,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     </section>
     <div class="table-header">
       <div class="col-handle"></div>
+      <div class="col-index">#</div>
       <div class="col-year">年度</div>
       <div class="col-code">講義コード</div>
       <div class="col-term">学期</div>
@@ -192,6 +193,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         :class="{ 'dragging': draggedIndex === index }"
       >
         <SyllabusRow
+          :row-index="index"
           v-model:rishunen="row.rishunen"
           v-model:kougicd="row.kougicd"
           v-model:evaluation="row.evaluation"
@@ -230,7 +232,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .category-value { font-weight: bold; }
 .table-header {
   display: grid;
-  grid-template-columns: 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;

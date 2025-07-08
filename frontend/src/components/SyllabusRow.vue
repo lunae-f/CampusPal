@@ -2,6 +2,7 @@
 import { computed, watch, ref } from 'vue';
 
 const props = defineProps({
+  rowIndex: Number,
   rishunen: String,
   kougicd: String,
   evaluation: String,
@@ -70,6 +71,9 @@ watch(
     <div class="col-handle">
       <span class="drag-handle">⠿</span>
     </div>
+    <div class="col-index">
+      {{ rowIndex + 1 }}
+    </div>
     <div class="col-year">
       <input :value="rishunen" @input="$emit('update:rishunen', $event.target.value)" placeholder="年度" class="input-field" />
     </div>
@@ -110,7 +114,7 @@ watch(
 <style scoped>
 .syllabus-row {
   display: grid;
-  grid-template-columns: 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px;
   align-items: center;
   padding: 8px 4px;
@@ -118,12 +122,16 @@ watch(
   font-size: 0.9em;
   transition: background-color 0.3s, opacity 0.3s;
 }
+.col-index {
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.9em;
+}
 .drag-handle {
   cursor: grab;
-  color: #CCC;
+  color: #ccc;
   font-size: 1.5em;
   padding: 0 5px;
-  /* 打消し線が適用されないようにする */
   text-decoration: none;
 }
 .drag-handle:active {
@@ -135,8 +143,7 @@ watch(
   background-color: #aaadaf !important;
   opacity: 0.6;
 }
-/* ハンドル以外の列にのみ打消し線を適用 */
-.is-older-attempt > div:not(.col-handle) {
+.is-older-attempt > div:not(.col-handle):not(.col-index) {
   text-decoration: line-through;
 }
 .is-older-attempt:hover { opacity: 1; }
