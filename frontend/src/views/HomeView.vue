@@ -89,7 +89,7 @@ const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.ev
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; totalAttemptedCredits += credits; } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const acquisitionRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, acquisitionRate: acquisitionRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
-const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); await new Promise(resolve => setTimeout(resolve, 200)); } } };
+const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
 const clearRowData = (rowToClear) => { rowToClear.evaluation = ''; rowToClear.syllabusData = null; rowToClear.isLoading = false; rowToClear.error = null; };
 onMounted(() => { const savedDataString = localStorage.getItem(STORAGE_KEY); if (savedDataString) { try { const savedData = JSON.parse(savedDataString); if (savedData.rows.length > 0) { crclumcd.value = savedData.crclumcd; const newRows = savedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null })); rows.value = newRows; fetchSyllabusDataForRows(rows.value); return; } } catch (e) { console.error("Failed to parse localStorage data:", e); localStorage.removeItem(STORAGE_KEY); } } rows.value = Array.from({ length: 15 }, (_, i) => ({ id: i, rishunen: '2024', kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null })); });
@@ -156,6 +156,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       >
         <SyllabusRow
           :row-index="index"
+          :ref="el => { if (el) rowRefs[index] = el }"
           v-model:rishunen="row.rishunen"
           v-model:kougicd="row.kougicd"
           v-model:evaluation="row.evaluation"
@@ -168,6 +169,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           @fetch-request="handleFetch(row)"
           @clear-row="clearRowData(row)"
           @drag-start="onDragStart(index)"
+          @focus-next="handleFocusNext(index)"
         />
       </div>
     </div>
@@ -183,10 +185,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .io-button:hover { background-color: #f8f9fa; }
 .global-input { display: flex; align-items: center; gap: 8px; }
 .global-input input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-.tooltip-label {
-  cursor: help;
-  border-bottom: 1px dotted #6c757d;
-}
+.tooltip-label { cursor: help; border-bottom: 1px dotted #6c757d; }
 .gpa-display { background-color: #e9f7ef; border: 1px solid #a9d6b8; border-radius: 8px; padding: 16px; margin-bottom: 10px; display: flex; justify-content: space-around; }
 .gpa-item { text-align: center; }
 .gpa-label { font-size: 0.9em; color: #333; }
@@ -197,29 +196,9 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px 32px; font-size: 0.9em; }
 .category-item { display: flex; justify-content: flex-start; align-items: baseline; gap: 0.8em; }
 .category-value { font-weight: bold; }
-.table-header {
-  display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
-  gap: 12px;
-  font-weight: bold;
-  border-bottom: 2px solid #333;
-  padding: 0 4px 8px 4px;
-  color: #555;
-  font-size: 0.8em;
-}
-.table-header > div {
-  text-align: center;
-}
-.table-header .col-info,
-.table-header .col-category,
-.table-header .col-instructors {
-  text-align: left;
-}
-.drag-wrapper {
-  border-bottom: 1px solid #eee;
-}
-.dragging {
-  opacity: 0.5;
-  background: #cce5ff;
-}
+.table-header { display: grid; grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px; gap: 12px; font-weight: bold; border-bottom: 2px solid #333; padding: 0 4px 8px 4px; color: #555; font-size: 0.8em; }
+.table-header > div { text-align: center; }
+.table-header .col-info, .table-header .col-category, .table-header .col-instructors { text-align: left; }
+.drag-wrapper { border-bottom: 1px solid #eee; }
+.dragging { opacity: 0.5; background: #cce5ff; }
 </style>

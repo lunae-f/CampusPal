@@ -13,9 +13,14 @@ const props = defineProps({
   isOlderAttempt: Boolean,
   crclumcd: String,
 });
-const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'drag-start']);
+const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'drag-start', 'focus-next']);
 
-const debounceTimer = ref(null);
+const kougicdInput = ref(null);
+
+const focusInput = () => {
+  kougicdInput.value?.focus();
+};
+defineExpose({ focusInput });
 
 const isCodeInvalid = computed(() => {
   if (!props.kougicd) return false;
@@ -52,15 +57,19 @@ const displayInstructorText = computed(() => {
 watch(
   [() => props.rishunen, () => props.kougicd],
   ([newYear, newCode], [oldYear, oldCode]) => {
-    clearTimeout(debounceTimer.value);
-    if (!newCode && oldCode) {
-      emit('clear-row');
-      return;
-    }
     if (newYear && newCode && !isCodeInvalid.value) {
-      debounceTimer.value = setTimeout(() => {
-        emit('fetch-request');
-      }, 500);
+      emit('fetch-request');
+    } else if (!newCode && oldCode) {
+      emit('clear-row');
+    }
+  }
+);
+
+watch(
+  () => props.kougicd,
+  (newCode) => {
+    if (newCode && newCode.length === 9 && !isCodeInvalid.value) {
+      emit('focus-next');
     }
   }
 );
@@ -78,7 +87,15 @@ watch(
       <input :value="rishunen" @input="$emit('update:rishunen', $event.target.value)" placeholder="年度" class="input-field" />
     </div>
     <div class="col-code">
-      <input :value="kougicd" @input="$emit('update:kougicd', $event.target.value)" placeholder="講義コード" class="input-field" :class="{ 'is-invalid': isCodeInvalid }" maxlength="9" />
+      <input 
+        ref="kougicdInput" 
+        :value="kougicd" 
+        @input="$emit('update:kougicd', $event.target.value)" 
+        placeholder="講義コード" 
+        class="input-field" 
+        :class="{ 'is-invalid': isCodeInvalid }" 
+        maxlength="9" 
+      />
     </div>
     <div class="col-term">
       <span v-if="syllabusData">{{ syllabusData.term }}</span>
@@ -129,7 +146,7 @@ watch(
 }
 .drag-handle {
   cursor: grab;
-  color: #75757586;
+  color: #3b3b3b8c;
   font-size: 1.5em;
   padding: 0 5px;
   text-decoration: none;
