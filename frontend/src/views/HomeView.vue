@@ -9,17 +9,25 @@ const crclumcd = ref('s24160');
 const rows = ref([]);
 const fileInput = ref(null);
 
+// --- ドラッグ＆ドロップのロジック ---
+const draggedIndex = ref(null);
 
-// 複数の行のシラバス情報を順番に取得する関数
-const fetchSyllabusDataForRows = async (rowsToFetch) => {
-  for (const row of rowsToFetch) {
-    if (row.kougicd && row.rishunen) {
-      await handleFetch(row);
-      // 次のリクエストまでに200ミリ秒の待機時間を設ける
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-  }
+const onDragStart = (index) => {
+  draggedIndex.value = index;
 };
+
+const onDrop = (targetIndex) => {
+  if (draggedIndex.value === null) return;
+
+  // 配列からドラッグした要素を一度削除
+  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0];
+  // ドロップした位置に要素を挿入
+  rows.value.splice(targetIndex, 0, draggedItem);
+  
+  // ドラッグ状態をリセット
+  draggedIndex.value = null;
+};
+// --- ここまで ---
 
 const saveToFile = () => {
   try {
@@ -97,9 +105,9 @@ const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.ev
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; totalAttemptedCredits += credits; } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const acquisitionRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, acquisitionRate: acquisitionRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
+const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); await new Promise(resolve => setTimeout(resolve, 200)); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
 const clearRowData = (rowToClear) => { rowToClear.evaluation = ''; rowToClear.syllabusData = null; rowToClear.isLoading = false; rowToClear.error = null; };
-
 onMounted(() => {
   const savedDataString = localStorage.getItem(STORAGE_KEY);
   if (savedDataString) {
@@ -124,7 +132,6 @@ onMounted(() => {
 watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' })); const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }; localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave)); if (newRows.length > 0) { const lastRow = newRows[newRows.length - 1]; if (lastRow.kougicd || lastRow.evaluation) { addNewRow(); } } }, { deep: true });
 </script>
 
-
 <template>
   <main class="container">
     <header class="header">
@@ -141,7 +148,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
       </div>
     </header>
-
     <section class="gpa-display">
       <div class="gpa-item">
         <div class="gpa-label">f-GPA</div>
@@ -154,7 +160,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         <div class="gpa-range">取得率: {{ gpaStats.acquisitionRate }}%</div>
       </div>
     </section>
-    
     <section class="category-credits-display">
       <h3>取得単位数（分野系列別）</h3>
       <div class="category-grid">
@@ -164,8 +169,8 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
       </div>
     </section>
-    
     <div class="table-header">
+      <div class="col-handle"></div>
       <div class="col-year">年度</div>
       <div class="col-code">講義コード</div>
       <div class="col-term">学期</div>
@@ -175,23 +180,31 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       <div class="col-credits">単位数</div>
       <div class="col-eval">評価</div>
     </div>
-    
     <div class="syllabus-table">
-      <SyllabusRow
-        v-for="row in rows"
+      <div 
+        v-for="(row, index) in rows"
         :key="row.id"
-        v-model:rishunen="row.rishunen"
-        v-model:kougicd="row.kougicd"
-        v-model:evaluation="row.evaluation"
-        :syllabus-data="row.syllabusData"
-        :is-loading="row.isLoading"
-        :error="row.error"
-        :is-duplicate="rowMetadata[row.id]?.isDuplicate"
-        :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
-        :crclumcd="crclumcd"
-        @fetch-request="handleFetch(row)"
-        @clear-row="clearRowData(row)"
-      />
+        :draggable="true"
+        @dragstart="onDragStart(index)"
+        @drop.prevent="onDrop(index)"
+        @dragover.prevent
+        class="drag-wrapper"
+        :class="{ 'dragging': draggedIndex === index }"
+      >
+        <SyllabusRow
+          v-model:rishunen="row.rishunen"
+          v-model:kougicd="row.kougicd"
+          v-model:evaluation="row.evaluation"
+          :syllabus-data="row.syllabusData"
+          :is-loading="row.isLoading"
+          :error="row.error"
+          :is-duplicate="rowMetadata[row.id]?.isDuplicate"
+          :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
+          :crclumcd="crclumcd"
+          @fetch-request="handleFetch(row)"
+          @clear-row="clearRowData(row)"
+        />
+      </div>
     </div>
   </main>
 </template>
@@ -217,7 +230,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .category-value { font-weight: bold; }
 .table-header {
   display: grid;
-  grid-template-columns: 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;
@@ -232,5 +245,12 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .table-header .col-category,
 .table-header .col-instructors {
   text-align: left;
+}
+.drag-wrapper {
+  border-bottom: 1px solid #eee;
+}
+.dragging {
+  opacity: 0.5;
+  background: #cce5ff;
 }
 </style>

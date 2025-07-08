@@ -1,96 +1,147 @@
 <script setup>
 import { computed, watch, ref } from 'vue';
 
-const props = defineProps({ rishunen: String, kougicd: String, evaluation: String, syllabusData: Object, isLoading: Boolean, error: String, isDuplicate: Boolean, isOlderAttempt: Boolean, crclumcd: String });
-const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'focus-next']);
+const props = defineProps({
+  rishunen: String,
+  kougicd: String,
+  evaluation: String,
+  syllabusData: Object,
+  isLoading: Boolean,
+  error: String,
+  isDuplicate: Boolean,
+  isOlderAttempt: Boolean,
+  crclumcd: String,
+});
+const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row']);
 
-// 講義コードのinput要素への参照
-const kougicdInput = ref(null);
+const debounceTimer = ref(null);
 
-// 親コンポーネントから呼び出されるフォーカス用のメソッド
-const focusInput = () => {
-  kougicdInput.value?.focus();
-};
-// 親にメソッドを公開
-defineExpose({ focusInput });
-
-const isCodeInvalid = computed(() => { if (!props.kougicd) return false; const regex = /^[a-z]{3}\d{6}$/; return !regex.test(props.kougicd); });
-const syllabusUrl = computed(() => { if (!props.rishunen || !props.kougicd || !props.crclumcd) return null; const params = new URLSearchParams({ 'value(risyunen)': props.rishunen, 'value(semekikn)': '1', 'value(kougicd)': props.kougicd, 'value(crclumcd)': props.crclumcd }); return `https://websrv.tcu.ac.jp/tcu_web_v3/slbssbdr.do?${params.toString()}`; });
-const fullInstructorText = computed(() => { if (!props.syllabusData?.instructors) return ''; return Array.isArray(props.syllabusData.instructors) ? props.syllabusData.instructors.join(', ') : props.syllabusData.instructors; });
-const displayInstructorText = computed(() => { const instructors = props.syllabusData?.instructors; if (!Array.isArray(instructors) || instructors.length === 0) return instructors || ''; if (instructors.length > 1) return `${instructors[0]}　他`; return instructors[0]; });
+const isCodeInvalid = computed(() => {
+  if (!props.kougicd) return false;
+  const regex = /^[a-z]{3}\d{6}$/i;
+  return !regex.test(props.kougicd);
+});
+const syllabusUrl = computed(() => {
+  if (!props.rishunen || !props.kougicd || !props.crclumcd) return null;
+  const params = new URLSearchParams({
+    'value(risyunen)': props.rishunen,
+    'value(semekikn)': '1',
+    'value(kougicd)': props.kougicd,
+    'value(crclumcd)': props.crclumcd,
+  });
+  return `https://websrv.tcu.ac.jp/tcu_web_v3/slbssbdr.do?${params.toString()}`;
+});
+const fullInstructorText = computed(() => {
+  if (!props.syllabusData?.instructors) return '';
+  return Array.isArray(props.syllabusData.instructors)
+    ? props.syllabusData.instructors.join(', ')
+    : props.syllabusData.instructors;
+});
+const displayInstructorText = computed(() => {
+  const instructors = props.syllabusData?.instructors;
+  if (!Array.isArray(instructors) || instructors.length === 0) {
+    return instructors || '';
+  }
+  if (instructors.length > 1) {
+    return `${instructors[0]}　他`;
+  }
+  return instructors[0];
+});
 
 watch(
-  () => props.kougicd,
-  (newCode) => {
-    // 講義コードのwatchを、よりシンプルな単独のwatchに変更
-    if (!isCodeInvalid.value) {
-      emit('fetch-request');
-      // コードが9桁になったら次の行へフォーカスを要求
-      if (newCode && newCode.length === 9) {
-        emit('focus-next');
-      }
-    } else if (!newCode) {
+  [() => props.rishunen, () => props.kougicd],
+  ([newYear, newCode], [oldYear, oldCode]) => {
+    clearTimeout(debounceTimer.value);
+    if (!newCode && oldCode) {
       emit('clear-row');
+      return;
+    }
+    if (newYear && newCode && !isCodeInvalid.value) {
+      debounceTimer.value = setTimeout(() => {
+        emit('fetch-request');
+      }, 500);
     }
   }
 );
 </script>
 
 <template>
-  <tr class="syllabus-row" :class="{ 'is-success': syllabusData, 'is-error': error, 'is-older-attempt': isOlderAttempt, 'is-duplicate': isDuplicate }">
-    <td class="col-year">
+  <div class="syllabus-row" :class="{ 'is-success': syllabusData, 'is-error': error, 'is-older-attempt': isOlderAttempt, 'is-duplicate': isDuplicate }">
+    <div class="col-handle">
+      <span class="drag-handle">⠿</span>
+    </div>
+    <div class="col-year">
       <input :value="rishunen" @input="$emit('update:rishunen', $event.target.value)" placeholder="年度" class="input-field" />
-    </td>
-    <td class="col-code">
-      <input ref="kougicdInput" :value="kougicd" @input="$emit('update:kougicd', $event.target.value)" placeholder="講義コード" class="input-field" :class="{ 'is-invalid': isCodeInvalid }" maxlength="9" />
-    </td>
-    <td class="col-term">
-      <span v-if="syllabusData">{{ syllabusData.term }}</span><span v-else>&ndash;</span>
-    </td>
-    <td class="col-category">
+    </div>
+    <div class="col-code">
+      <input :value="kougicd" @input="$emit('update:kougicd', $event.target.value)" placeholder="講義コード" class="input-field" :class="{ 'is-invalid': isCodeInvalid }" maxlength="9" />
+    </div>
+    <div class="col-term">
+      <span v-if="syllabusData">{{ syllabusData.term }}</span>
+      <span v-else>&ndash;</span>
+    </div>
+    <div class="col-category">
       <span v-if="syllabusData">{{ syllabusData.category }}</span>
-    </td>
-    <td class="col-info">
+    </div>
+    <div class="col-info">
        <div v-if="isLoading" class="loading-text">検索中...</div>
        <div v-if="error" class="error-message">{{ error }}</div>
        <div v-if="syllabusData">
-        <div class="course-name"><a :href="syllabusUrl" target="_blank" rel="noopener noreferrer">{{ syllabusData.course_name }}</a></div>
+        <div class="course-name">
+          <a :href="syllabusUrl" target="_blank" rel="noopener noreferrer">{{ syllabusData.course_name }}</a>
+        </div>
         <div class="course-details">{{ syllabusData.department }} / {{ syllabusData.student_year }}</div>
       </div>
-    </td>
-    <td class="col-instructors" :title="fullInstructorText"><span>{{ displayInstructorText }}</span></td>
-    <td class="col-credits"><span v-if="syllabusData?.credits">{{ syllabusData.credits }}</span></td>
-    <td class="col-eval">
+    </div>
+    <div class="col-instructors" :title="fullInstructorText">
+       <span>{{ displayInstructorText }}</span>
+    </div>
+    <div class="col-credits">
+      <span v-if="syllabusData?.credits">{{ syllabusData.credits }}</span>
+    </div>
+    <div class="col-eval">
        <select :value="evaluation" @change="$emit('update:evaluation', $event.target.value)" class="input-field eval-select" :class="{ 'is-fail': evaluation === '不可' }">
         <option value="">--</option><option value="秀">秀</option><option value="優">優</option><option value="良">良</option><option value="可">可</option><option value="不可">不可</option>
       </select>
-    </td>
-  </tr>
+    </div>
+  </div>
 </template>
-
 
 <style scoped>
 .syllabus-row {
   display: grid;
-  grid-template-columns: 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px;
   align-items: center;
-  border-bottom: 1px solid #eee;
   padding: 8px 4px;
   min-height: 50px;
   font-size: 0.9em;
   transition: background-color 0.3s, opacity 0.3s;
+}
+.drag-handle {
+  cursor: grab;
+  color: #CCC;
+  font-size: 1.5em;
+  padding: 0 5px;
+  /* 打消し線が適用されないようにする */
+  text-decoration: none;
+}
+.drag-handle:active {
+  cursor: grabbing;
 }
 .is-success { background-color: #e9f7ef; }
 .is-error { background-color: #fbe9e7; }
 .is-older-attempt {
   background-color: #aaadaf !important;
   opacity: 0.6;
+}
+/* ハンドル以外の列にのみ打消し線を適用 */
+.is-older-attempt > div:not(.col-handle) {
   text-decoration: line-through;
 }
 .is-older-attempt:hover { opacity: 1; }
 .is-duplicate { background-color: #fff3e0 !important; }
-.col-year, .col-code, .col-term, .col-category, .col-instructors {
+.col-year, .col-code, .col-term, .col-category, .col-info, .col-instructors {
   text-align: left;
 }
 .col-credits, .col-eval {
