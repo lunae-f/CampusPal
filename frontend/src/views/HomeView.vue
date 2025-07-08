@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUpdate } from 'vue';
 import SyllabusRow from '../components/SyllabusRow.vue';
 import { fetchSyllabus } from '../services/syllabusApi.js';
 
@@ -8,28 +8,82 @@ const EVALUATION_RANGES = { '秀': { minScore: 90, maxScore: 100 }, '優': { min
 const crclumcd = ref('s24160');
 const rows = ref([]);
 const fileInput = ref(null);
+const rowRefs = ref([]);
 
-// --- ドラッグ＆ドロップのロジック ---
-const draggedIndex = ref(null);
+onBeforeUpdate(() => {
+  rowRefs.value = [];
+});
 
-const onDragStart = (index) => {
-  draggedIndex.value = index;
-};
-
-const onDrop = (targetIndex) => {
-  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
-    draggedIndex.value = null;
-    return;
+const handleFocusNext = (currentIndex) => {
+  const nextRowComponent = rowRefs.value[currentIndex + 1];
+  if (nextRowComponent) {
+    nextRowComponent.focusInput();
   }
-  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0];
-  rows.value.splice(targetIndex, 0, draggedItem);
-  draggedIndex.value = null;
 };
-// --- ここまで ---
 
-const saveToFile = () => { try { const simplifiedRows = rows.value.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' })); const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }; const jsonString = JSON.stringify(dataToSave, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'CampusPal_data.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch (error) { alert('ファイルの保存に失敗しました。'); console.error(error); } };
-const triggerFileInput = () => { fileInput.value.click(); };
-const handleFileLoad = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const content = e.target.result; let loadedData = {}; if (file.name.endsWith('.csv')) { const lines = content.trim().split('\n'); const simplifiedRows = []; for (let i = 1; i < lines.length; i++) { const parts = lines[i].split(','); if (parts.length >= 3) { simplifiedRows.push({ rishunen: parts[0].trim(), kougicd: parts[1].trim(), evaluation: parts[2].trim() }); } } loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value }; } else { loadedData = JSON.parse(content); } if (loadedData && Array.isArray(loadedData.rows)) { crclumcd.value = loadedData.crclumcd || crclumcd.value; const newRows = loadedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null })); rows.value = newRows; fetchSyllabusDataForRows(rows.value); alert('データを読み込みました。'); } else { throw new Error('ファイルの形式が正しくありません。'); } } catch (error) { alert(`ファイルの読み込みに失敗しました: ${error.message}`); console.error(error); } }; reader.readAsText(file); event.target.value = ''; };
+const saveToFile = () => {
+  try {
+    const simplifiedRows = rows.value.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' }));
+    const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows };
+    const jsonString = JSON.stringify(dataToSave, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'CampusPal_data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    alert('ファイルの保存に失敗しました。');
+    console.error(error);
+  }
+};
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileLoad = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target.result;
+      let loadedData = {};
+      if (file.name.endsWith('.csv')) {
+        const lines = content.trim().split('\n');
+        const simplifiedRows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].split(',');
+          if (parts.length >= 3) {
+            simplifiedRows.push({ rishunen: parts[0].trim(), kougicd: parts[1].trim(), evaluation: parts[2].trim() });
+          }
+        }
+        loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value };
+      } else {
+        loadedData = JSON.parse(content);
+      }
+      if (loadedData && Array.isArray(loadedData.rows)) {
+        crclumcd.value = loadedData.crclumcd || crclumcd.value;
+        const newRows = loadedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null }));
+        rows.value = newRows;
+        fetchSyllabusDataForRows(rows.value);
+        alert('データを読み込みました。');
+      } else {
+        throw new Error('ファイルの形式が正しくありません。');
+      }
+    } catch (error) {
+      alert(`ファイルの読み込みに失敗しました: ${error.message}`);
+      console.error(error);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+};
+
 const rowMetadata = computed(() => { const metadata = {}; const kougicdCounts = {}; const coursesByName = {}; rows.value.forEach(row => { metadata[row.id] = { isDuplicate: false, isOlderAttempt: false }; if (row.kougicd) { kougicdCounts[row.kougicd] = (kougicdCounts[row.kougicd] || 0) + 1; } if (row.syllabusData?.course_name) { const name = row.syllabusData.course_name; if (!coursesByName[name]) coursesByName[name] = []; coursesByName[name].push(row); } }); rows.value.forEach(row => { if (row.kougicd && kougicdCounts[row.kougicd] > 1) { metadata[row.id].isDuplicate = true; } }); const getTermRank = (term) => { const order = { '前期前半': 1, '前期後半': 2, '前期': 3, '後期前半': 4, '後期後半': 5, '後期': 6 }; return order[term] || 0; }; for (const courseName in coursesByName) { const group = coursesByName[courseName]; if (group.length > 1) { group.sort((a, b) => { if (a.rishunen !== b.rishunen) return b.rishunen - a.rishunen; const rankA = getTermRank(a.syllabusData.term); const rankB = getTermRank(b.syllabusData.term); return rankB - rankA; }); for (let i = 1; i < group.length; i++) { metadata[group[i].id].isOlderAttempt = true; } } } return metadata; });
 const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.evaluation && row.syllabusData?.course_name && !rowMetadata.value[row.id]?.isOlderAttempt);});
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; totalAttemptedCredits += credits; } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const acquisitionRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, acquisitionRate: acquisitionRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
@@ -52,8 +106,8 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
           <input type="file" ref="fileInput" @change="handleFileLoad" accept=".json,.csv" style="display: none;" />
         </div>
-        <div class="global-input">
-          <label for="crclumcd">カリキュラムコード:</label>
+        <div class="global-input" title="s+学籍番号上5桁">
+          <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
           <input id="crclumcd" v-model="crclumcd" />
         </div>
       </div>
@@ -129,6 +183,10 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .io-button:hover { background-color: #f8f9fa; }
 .global-input { display: flex; align-items: center; gap: 8px; }
 .global-input input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+.tooltip-label {
+  cursor: help;
+  border-bottom: 1px dotted #6c757d;
+}
 .gpa-display { background-color: #e9f7ef; border: 1px solid #a9d6b8; border-radius: 8px; padding: 16px; margin-bottom: 10px; display: flex; justify-content: space-around; }
 .gpa-item { text-align: center; }
 .gpa-label { font-size: 0.9em; color: #333; }
