@@ -33,71 +33,9 @@ const triggerFileInput = () => { fileInput.value.click(); };
 const handleFileLoad = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const content = e.target.result; let loadedData = {}; if (file.name.endsWith('.csv')) { const lines = content.trim().split('\n'); const simplifiedRows = []; for (let i = 1; i < lines.length; i++) { const parts = lines[i].split(','); if (parts.length >= 3) { simplifiedRows.push({ rishunen: parts[0].trim(), kougicd: parts[1].trim(), evaluation: parts[2].trim() }); } } loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value }; } else { loadedData = JSON.parse(content); } if (loadedData && Array.isArray(loadedData.rows)) { crclumcd.value = loadedData.crclumcd || crclumcd.value; const newRows = loadedData.rows.map((simpleRow, index) => ({ id: index, rishunen: simpleRow.rishunen, kougicd: simpleRow.kougicd, evaluation: simpleRow.evaluation, syllabusData: null, isLoading: false, error: null })); rows.value = newRows; fetchSyllabusDataForRows(rows.value); alert('データを読み込みました。'); } else { throw new Error('ファイルの形式が正しくありません。'); } } catch (error) { alert(`ファイルの読み込みに失敗しました: ${error.message}`); console.error(error); } }; reader.readAsText(file); event.target.value = ''; };
 const rowMetadata = computed(() => { const metadata = {}; const kougicdCounts = {}; const coursesByName = {}; rows.value.forEach(row => { metadata[row.id] = { isDuplicate: false, isOlderAttempt: false }; if (row.kougicd) { kougicdCounts[row.kougicd] = (kougicdCounts[row.kougicd] || 0) + 1; } if (row.syllabusData?.course_name) { const name = row.syllabusData.course_name; if (!coursesByName[name]) coursesByName[name] = []; coursesByName[name].push(row); } }); rows.value.forEach(row => { if (row.kougicd && kougicdCounts[row.kougicd] > 1) { metadata[row.id].isDuplicate = true; } }); const getTermRank = (term) => { const order = { '前期前半': 1, '前期後半': 2, '前期': 3, '後期前半': 4, '後期後半': 5, '後期': 6 }; return order[term] || 0; }; for (const courseName in coursesByName) { const group = coursesByName[courseName]; if (group.length > 1) { group.sort((a, b) => { if (a.rishunen !== b.rishunen) return b.rishunen - a.rishunen; const rankA = getTermRank(a.syllabusData.term); const rankB = getTermRank(b.syllabusData.term); return rankB - rankA; }); for (let i = 1; i < group.length; i++) { metadata[group[i].id].isOlderAttempt = true; } } } return metadata; });
 const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.kougicd && row.syllabusData?.course_name && !rowMetadata.value[row.id]?.isOlderAttempt);});
-
-const gpaStats = computed(() => {
-  let totalMinGpProduct = 0, totalMaxGpProduct = 0;
-  let totalAttemptedCredits = 0;
-  let totalEarnedCredits = 0;
-  let totalInProgressCredits = 0;
-
-  for (const row of finalRowsForCalc.value) {
-    const credits = Number(row.syllabusData?.credits);
-    if (!credits) continue;
-
-    if (row.evaluation) {
-      totalAttemptedCredits += credits;
-      let minGp = 0, maxGp = 0;
-      if (row.evaluation !== '不可') {
-        const range = EVALUATION_RANGES[row.evaluation];
-        if (range) {
-          minGp = (range.minScore - 50) / 10;
-          maxGp = (range.maxScore - 50) / 10;
-        }
-        totalEarnedCredits += credits;
-      }
-      totalMinGpProduct += minGp * credits;
-      totalMaxGpProduct += maxGp * credits;
-    } else {
-      totalInProgressCredits += credits;
-    }
-  }
-
-  const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0;
-  const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0;
-  const avgGpa = (minGpa + maxGpa) / 2;
-  
-  const currentRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0;
-  const prospectiveTotalAttempted = totalAttemptedCredits + totalInProgressCredits;
-  const prospectiveTotalEarned = totalEarnedCredits + totalInProgressCredits;
-  const prospectiveRate = prospectiveTotalAttempted > 0 ? (prospectiveTotalEarned / prospectiveTotalAttempted * 100) : 0;
-
-  return { totalAttemptedCredits, totalEarnedCredits, totalInProgressCredits, currentRate: currentRate.toFixed(1), prospectiveRate: prospectiveRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) };
-});
-
+const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0, totalInProgressCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; if (row.evaluation) { totalAttemptedCredits += credits; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; } else { totalInProgressCredits += credits; } } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const currentRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; const prospectiveTotalAttempted = totalAttemptedCredits + totalInProgressCredits; const prospectiveTotalEarned = totalEarnedCredits + totalInProgressCredits; const prospectiveRate = prospectiveTotalAttempted > 0 ? (prospectiveTotalEarned / prospectiveTotalAttempted * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, totalInProgressCredits, currentRate: currentRate.toFixed(1), prospectiveRate: prospectiveRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation && row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
-
-const creditsByTerm = computed(() => {
-  const termTotals = {};
-  for (const row of finalRowsForCalc.value) {
-    if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) {
-      const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`;
-      if (!termTotals[termKey]) {
-        termTotals[termKey] = { earned: 0, attempted: 0, inProgress: 0 };
-      }
-      const credits = Number(row.syllabusData.credits);
-      if(row.evaluation) {
-        termTotals[termKey].attempted += credits;
-        if (row.evaluation !== '不可') {
-          termTotals[termKey].earned += credits;
-        }
-      } else {
-        termTotals[termKey].inProgress += credits;
-      }
-    }
-  }
-  return termTotals;
-});
-
+const creditsByTerm = computed(() => { const termTotals = {}; for (const row of finalRowsForCalc.value) { if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) { const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`; if (!termTotals[termKey]) { termTotals[termKey] = { earned: 0, attempted: 0, inProgress: 0 }; } const credits = Number(row.syllabusData.credits); if(row.evaluation) { termTotals[termKey].attempted += credits; if (row.evaluation !== '不可') { termTotals[termKey].earned += credits; } } else { termTotals[termKey].inProgress += credits; } } } return termTotals; });
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
 const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
@@ -151,15 +89,11 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
       </section>
       <section class="term-credits-display">
-        <h3>単位数（学期別）</h3>
+        <h3>単位数（開講時期別）</h3>
         <div class="term-grid">
           <div v-for="(stats, term) in creditsByTerm" :key="term" class="term-item">
             <span class="term-name">{{ term }}</span>
-            <span class="term-value">
-              {{ stats.earned }} / {{ stats.attempted }}
-              <span class="in-progress-credits" v-if="stats.inProgress > 0">(+{{ stats.inProgress }})</span>
-              単位
-            </span>
+            <span class="term-value">{{ stats.earned }} / {{ stats.attempted }} <span class="in-progress-credits" v-if="stats.inProgress > 0">(+{{ stats.inProgress }})</span> 単位</span>
           </div>
         </div>
       </section>
@@ -198,6 +132,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           :crclumcd="crclumcd"
           @fetch-request="handleFetch(row)"
           @clear-row="clearRowData(row)"
+          @drag-start="onDragStart(index)"
         />
       </div>
     </VueDraggable>

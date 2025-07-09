@@ -13,8 +13,7 @@ const props = defineProps({
   isOlderAttempt: Boolean,
   crclumcd: String,
 });
-// drag-start emitを削除
-const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row']);
+const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'drag-start']);
 
 const debounceTimer = ref(null);
 
@@ -59,9 +58,7 @@ watch(
       return;
     }
     if (newYear && newCode && !isCodeInvalid.value) {
-      debounceTimer.value = setTimeout(() => {
-        emit('fetch-request');
-      }, 500);
+      emit('fetch-request');
     }
   }
 );
@@ -69,8 +66,7 @@ watch(
 
 <template>
   <div class="syllabus-row" :class="{ 'is-success': syllabusData, 'is-error': error, 'is-older-attempt': isOlderAttempt, 'is-duplicate': isDuplicate }">
-    <div class="col-handle">
-      <!-- draggable属性とイベントを削除 -->
+    <div class="col-handle" :draggable="true" @dragstart="$emit('drag-start')">
       <span class="drag-handle">⠿</span>
     </div>
     <div class="col-index">
@@ -83,8 +79,11 @@ watch(
       <input :value="kougicd" @input="$emit('update:kougicd', $event.target.value)" placeholder="講義コード" class="input-field" :class="{ 'is-invalid': isCodeInvalid }" maxlength="9" />
     </div>
     <div class="col-term">
-      <span v-if="syllabusData">{{ syllabusData.term }}</span>
-      <span v-else>&ndash;</span>
+      <div class="term-year">{{ rishunen }}年度</div>
+      <div>
+        <span v-if="syllabusData">{{ syllabusData.term }}</span>
+        <span v-else>&ndash;</span>
+      </div>
     </div>
     <div class="col-category">
       <span v-if="syllabusData">{{ syllabusData.category }}</span>
@@ -150,11 +149,18 @@ watch(
 }
 .is-older-attempt:hover { opacity: 1; }
 .is-duplicate { background-color: #fff3e0 !important; }
-.col-year, .col-code, .col-term, .col-category, .col-info, .col-instructors {
+.col-year, .col-code, .col-category, .col-info, .col-instructors {
   text-align: left;
 }
 .col-credits, .col-eval {
   text-align: center;
+}
+.col-term {
+  text-align: center;
+}
+.term-year {
+  font-size: 0.8em;
+  color: #6c757d;
 }
 .input-field {
   padding: 6px;
