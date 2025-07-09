@@ -16,9 +16,6 @@ const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
 
-// ドラッグ中のインデックスを保持
-const draggedIndex = ref(null)
-
 // サイドバーの開閉状態
 const isMobileSidebarOpen = ref(false)
 const isFilterSidebarOpen = ref(true) // PC用フィルターサイドバー
@@ -68,6 +65,15 @@ onBeforeUpdate(() => {
 
 const onDragStart = (index) => {
   draggedIndex.value = index
+}
+const onDrop = (targetIndex) => {
+  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
+    draggedIndex.value = null
+    return
+  }
+  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0]
+  rows.value.splice(targetIndex, 0, draggedItem)
+  draggedIndex.value = null
 }
 
 const saveToFile = () => {
@@ -830,7 +836,6 @@ watch(
   border: 1px solid #a9d6b8;
   border-radius: 8px;
   padding: 16px;
-  margin-bottom: 10px;
   display: flex;
   justify-content: space-around;
   flex-wrap: wrap;
@@ -894,6 +899,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.year-group {
 }
 .year-header {
   display: flex;
@@ -1041,9 +1048,15 @@ watch(
     position: sticky;
     top: 85px; /* ヘッダー + コンテナのpadding */
     align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
   .stats-container {
     grid-template-columns: 1fr;
+  }
+  .gpa-display {
+    margin-bottom: 0; /* gapで制御するため不要に */
   }
 }
 
@@ -1121,6 +1134,9 @@ watch(
     padding-top: 50px;
     overflow-y: auto;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
   .sidebar.mobile-is-open {
     transform: translateX(0);
