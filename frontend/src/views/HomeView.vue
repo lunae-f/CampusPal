@@ -63,7 +63,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 </script>
 
 <template>
-  <main class="container">
+  <div class="container">
     <header class="header">
       <h1>CampusPal</h1>
       <div class="header-controls">
@@ -78,115 +78,126 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
       </div>
     </header>
-    <section class="gpa-display">
-      <div class="gpa-item">
-        <div class="gpa-label">f-GPA</div>
-        <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
-        <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
-      </div>
-      <div class="gpa-item">
-        <div class="gpa-label">単位数</div>
-        <div class="gpa-main-value">
-          {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
-          <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0">(+{{ gpaStats.totalInProgressCredits }})</span>
-        </div>
-        <div class="gpa-range">
-          取得率: {{ gpaStats.currentRate }}%
-          <span v-if="gpaStats.totalInProgressCredits > 0">({{ gpaStats.prospectiveRate }}%)</span>
-        </div>
-      </div>
-    </section>
-    <div class="stats-container">
-      <section class="category-credits-display">
-        <h3>取得単位数（分野系列別）</h3>
-        <div class="category-grid">
-          <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
-            <span class="category-name">{{ category }}</span>
-            <span class="category-value">{{ credits }}単位</span>
-          </div>
-        </div>
-      </section>
-      <section class="term-credits-display">
-        <h3>単位数（開講時期別）</h3>
-        <div class="term-grid">
-          <div v-for="group in groupedAndSortedCreditsByTerm" :key="group.year" class="year-group">
-            <div class="year-header">
-              <h4>{{ group.year }}年度</h4>
-              <span class="year-total">{{ group.yearStats.earned }} / {{ group.yearStats.attempted }} <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0">(+{{ group.yearStats.inProgress }})</span> 単位</span>
-            </div>
-            <div v-for="item in group.terms" :key="item.termName" class="term-item">
-              <span class="term-name">{{ item.termName }}</span>
-              <span class="term-value">{{ item.stats.earned }} / {{ item.stats.attempted }} <span class="in-progress-credits" v-if="item.stats.inProgress > 0">(+{{ item.stats.inProgress }})</span> 単位</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
 
-    <!-- フィルタリングUIを追加 -->
-    <section class="filter-controls">
-      <div class="filter-group">
-        <label for="filter-year">年度</label>
-        <select id="filter-year" v-model="selectedYear">
-          <option value="">すべて</option>
-          <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-term">開講時期</label>
-        <select id="filter-term" v-model="selectedTerm">
-          <option value="">すべて</option>
-          <option v-for="term in availableTerms" :key="term" :value="term">{{ term }}</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-category">分野系列</label>
-        <select id="filter-category" v-model="selectedCategory">
-          <option value="">すべて</option>
-          <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
-        </select>
-      </div>
-    </section>
+    <!-- 2カラムレイアウトのラッパー -->
+    <div class="layout-wrapper">
+      
+      <!-- メインコンテンツ（左カラム） -->
+      <main class="main-content">
+        <section class="filter-controls">
+          <div class="filter-group">
+            <label for="filter-year">年度</label>
+            <select id="filter-year" v-model="selectedYear">
+              <option value="">すべて</option>
+              <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-term">開講時期</label>
+            <select id="filter-term" v-model="selectedTerm">
+              <option value="">すべて</option>
+              <option v-for="term in availableTerms" :key="term" :value="term">{{ term }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-category">分野系列</label>
+            <select id="filter-category" v-model="selectedCategory">
+              <option value="">すべて</option>
+              <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </div>
+        </section>
 
-    <div class="table-header">
-      <div class="col-handle"></div>
-      <div class="col-index">#</div>
-      <div class="col-year">年度</div>
-      <div class="col-code">講義コード</div>
-      <div class="col-term">学期</div>
-      <div class="col-category">分野系列</div>
-      <div class="col-info">講義名</div>
-      <div class="col-instructors">担当者</div>
-      <div class="col-credits">単位数</div>
-      <div class="col-eval">評価</div>
+        <div class="table-header">
+          <div class="col-handle"></div>
+          <div class="col-index">#</div>
+          <div class="col-year">年度</div>
+          <div class="col-code">講義コード</div>
+          <div class="col-term">学期</div>
+          <div class="col-category">分野系列</div>
+          <div class="col-info">講義名</div>
+          <div class="col-instructors">担当者</div>
+          <div class="col-credits">単位数</div>
+          <div class="col-eval">評価</div>
+        </div>
+        <VueDraggable
+          v-model="rows"
+          tag="div"
+          class="syllabus-table"
+          handle=".drag-handle"
+          animation="150"
+          ghostClass="draggable-ghost"
+        >
+          <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper" v-show="shouldShowRow(row)">
+            <SyllabusRow
+              :row-index="index"
+              v-model:rishunen="row.rishunen"
+              v-model:kougicd="row.kougicd"
+              v-model:evaluation="row.evaluation"
+              :syllabus-data="row.syllabusData"
+              :is-loading="row.isLoading"
+              :error="row.error"
+              :is-duplicate="rowMetadata[row.id]?.isDuplicate"
+              :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
+              :crclumcd="crclumcd"
+              @fetch-request="handleFetch(row)"
+              @clear-row="clearRowData(row)"
+              @drag-start="onDragStart(index)"
+            />
+          </div>
+        </VueDraggable>
+      </main>
+
+      <!-- サイドバー（右カラム） -->
+      <aside class="sidebar">
+        <section class="gpa-display">
+          <div class="gpa-item">
+            <div class="gpa-label">f-GPA</div>
+            <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
+            <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
+          </div>
+          <div class="gpa-item">
+            <div class="gpa-label">単位数</div>
+            <div class="gpa-main-value">
+              {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
+              <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0">(+{{ gpaStats.totalInProgressCredits }})</span>
+            </div>
+            <div class="gpa-range">
+              取得率: {{ gpaStats.currentRate }}%
+              <span v-if="gpaStats.totalInProgressCredits > 0">({{ gpaStats.prospectiveRate }}%)</span>
+            </div>
+          </div>
+        </section>
+        <div class="stats-container">
+          <section class="category-credits-display">
+            <h3>取得単位数（分野系列別）</h3>
+            <div class="category-grid">
+              <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
+                <span class="category-name">{{ category }}</span>
+                <span class="category-value">{{ credits }}単位</span>
+              </div>
+            </div>
+          </section>
+          <section class="term-credits-display">
+            <h3>単位数（開講時期別）</h3>
+            <div class="term-grid">
+              <div v-for="group in groupedAndSortedCreditsByTerm" :key="group.year" class="year-group">
+                <div class="year-header">
+                  <h4>{{ group.year }}年度</h4>
+                  <span class="year-total">{{ group.yearStats.earned }} / {{ group.yearStats.attempted }} <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0">(+{{ group.yearStats.inProgress }})</span> 単位</span>
+                </div>
+                <div v-for="item in group.terms" :key="item.termName" class="term-item">
+                  <span class="term-name">{{ item.termName }}</span>
+                  <span class="term-value">{{ item.stats.earned }} / {{ item.stats.attempted }} <span class="in-progress-credits" v-if="item.stats.inProgress > 0">(+{{ item.stats.inProgress }})</span> 単位</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
     </div>
-    <VueDraggable
-      v-model="rows"
-      tag="div"
-      class="syllabus-table"
-      handle=".drag-handle"
-      animation="150"
-      ghostClass="draggable-ghost"
-    >
-      <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper" v-show="shouldShowRow(row)">
-        <SyllabusRow
-          :row-index="index"
-          v-model:rishunen="row.rishunen"
-          v-model:kougicd="row.kougicd"
-          v-model:evaluation="row.evaluation"
-          :syllabus-data="row.syllabusData"
-          :is-loading="row.isLoading"
-          :error="row.error"
-          :is-duplicate="rowMetadata[row.id]?.isDuplicate"
-          :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
-          :crclumcd="crclumcd"
-          @fetch-request="handleFetch(row)"
-          @clear-row="clearRowData(row)"
-          @drag-start="onDragStart(index)"
-        />
-      </div>
-    </VueDraggable>
-  </main>
+  </div>
 </template>
 
 <style scoped>
@@ -211,7 +222,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .gpa-main-value { font-weight: bold; font-size: 2em; color: #00754a; line-height: 1.2; }
 .gpa-range { font-size: 0.8em; color: #6c757d; }
 .in-progress-credits { font-size: 0.8em; color: #00754a; }
-.stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.stats-container { display: grid; grid-template-columns: 1fr; gap: 20px; } /* サイドバー内で1カラムに */
 .category-credits-display, .term-credits-display { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
 .category-credits-display h3, .term-credits-display h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1em; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
 .category-grid { display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.9em; }
@@ -226,7 +237,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .term-value { font-weight: bold; }
 .filter-controls {
   display: flex;
-  flex-wrap: wrap; /* 画面が狭くなった時に折り返す */
+  flex-wrap: wrap;
   gap: 20px;
   margin-bottom: 20px;
   padding: 15px;
@@ -254,12 +265,31 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .drag-wrapper { border-bottom: 1px solid #eee; }
 .draggable-ghost { opacity: 0.5; background: #cce5ff; }
 
+/* --- 2カラムレイアウト用のスタイル --- */
+@media (min-width: 1024px) { /* より広い画面で適用 */
+  .layout-wrapper {
+    display: grid;
+    grid-template-columns: 3fr 1fr; /* 左:右 = 3:1 の比率に変更 */
+    gap: 24px;
+  }
+  .sidebar {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+  }
+  /* PC表示では統計情報を縦に並べる */
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 /* --- Mobile View --- */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .container { padding: 10px; }
   .header { flex-direction: column; align-items: stretch; }
   .header-controls { flex-direction: column; align-items: stretch; gap: 10px; }
-  .stats-container { grid-template-columns: 1fr; }
+  .stats-container { grid-template-columns: 1fr; } /* スマホ・タブレットでは1カラム */
   .table-header { display: none; }
   .syllabus-table { display: flex; flex-direction: column; gap: 10px; }
   .drag-wrapper {
@@ -268,17 +298,15 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     background-color: #fff;
   }
 
-  /* スマホ用の絞り込みスタイル（縦並び） */
   .filter-controls {
     flex-direction: column;
-    align-items: stretch; /* 幅をコンテナに合わせる */
+    align-items: stretch;
     gap: 10px;
   }
   .filter-group {
-    justify-content: space-between; /* ラベルと選択欄を両端に配置 */
+    justify-content: space-between;
   }
 
-  /* --- Final Card Layout (Revision 17) --- */
   :deep(.syllabus-row) {
     display: grid;
     grid-template-columns: auto auto repeat(10, 1fr);
@@ -297,7 +325,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     display: block;
   }
 
-  /* grid-area definitions */
   :deep(.col-handle) { grid-area: 1 / 1; }
   :deep(.col-index) { grid-area: 1 / 2; font-weight: bold; }
   :deep(.col-year) { grid-area: 1 / 3 / 1 / 6; }
@@ -310,7 +337,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
   :deep(.col-credits) { grid-area: 4 / 8 / 4 / 13; text-align: right; }
   :deep(.col-gpa) { grid-area: 5 / 1 / 5 / 8; }
 
-  /* --- Style adjustments --- */
   :deep(.col-category),
   :deep(.col-instructors) {
     font-size: 0.9em;
@@ -341,8 +367,10 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
   }
   :deep(input), :deep(select) {
     font-size: 1em; padding: 6px; background-color: #f7f7f7;
-    border: 1px solid #ccc; border-radius: 4px;
-    width: 100%; box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 </style>
