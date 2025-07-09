@@ -66,153 +66,181 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 </script>
 
 <template>
-  <div class="container">
+  <div> <!-- 新しいルート要素 -->
     <header class="header">
-      <h1>CampusPal</h1>
-      <div class="header-controls">
-        <div class="file-operations">
-          <button @click="saveToFile" class="io-button">ファイルに保存</button>
-          <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
-          <input type="file" ref="fileInput" @change="handleFileLoad" accept=".json,.csv" style="display: none;" />
+      <div class="header-inner">
+        <h1>CampusPal</h1>
+        <div class="header-controls">
+          <div class="file-operations">
+            <button @click="saveToFile" class="io-button">ファイルに保存</button>
+            <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
+            <input type="file" ref="fileInput" @change="handleFileLoad" accept=".json,.csv" style="display: none;" />
+          </div>
+          <div class="global-input" title="s+学籍番号上5桁">
+            <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
+            <input id="crclumcd" v-model="crclumcd" />
+          </div>
         </div>
-        <div class="global-input" title="s+学籍番号上5桁">
-          <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
-          <input id="crclumcd" v-model="crclumcd" />
-        </div>
+        <!-- モバイル用サイドバー開閉ボタン -->
+        <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
       </div>
-      <!-- モバイル用サイドバー開閉ボタン -->
-      <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-      </button>
     </header>
 
-    <!-- 2カラムレイアウトのラッパー -->
-    <div class="layout-wrapper">
-      
-      <!-- メインコンテンツ（左カラム） -->
-      <main class="main-content">
-        <section class="filter-controls">
-          <div class="filter-group">
-            <label for="filter-year">年度</label>
-            <select id="filter-year" v-model="selectedYear">
-              <option value="">すべて</option>
-              <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filter-term">開講時期</label>
-            <select id="filter-term" v-model="selectedTerm">
-              <option value="">すべて</option>
-              <option v-for="term in availableTerms" :key="term" :value="term">{{ term }}</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filter-category">分野系列</label>
-            <select id="filter-category" v-model="selectedCategory">
-              <option value="">すべて</option>
-              <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-          </div>
-        </section>
-
-        <div class="table-header">
-          <div class="col-handle"></div>
-          <div class="col-index">#</div>
-          <div class="col-year">年度</div>
-          <div class="col-code">講義コード</div>
-          <div class="col-term">学期</div>
-          <div class="col-category">分野系列</div>
-          <div class="col-info">講義名</div>
-          <div class="col-instructors">担当者</div>
-          <div class="col-credits">単位数</div>
-          <div class="col-eval">評価</div>
-        </div>
-        <VueDraggable
-          v-model="rows"
-          tag="div"
-          class="syllabus-table"
-          handle=".drag-handle"
-          animation="150"
-          ghostClass="draggable-ghost"
-        >
-          <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper" v-show="shouldShowRow(row)">
-            <SyllabusRow
-              :row-index="index"
-              v-model:rishunen="row.rishunen"
-              v-model:kougicd="row.kougicd"
-              v-model:evaluation="row.evaluation"
-              :syllabus-data="row.syllabusData"
-              :is-loading="row.isLoading"
-              :error="row.error"
-              :is-duplicate="rowMetadata[row.id]?.isDuplicate"
-              :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
-              :crclumcd="crclumcd"
-              @fetch-request="handleFetch(row)"
-              @clear-row="clearRowData(row)"
-              @drag-start="onDragStart(index)"
-            />
-          </div>
-        </VueDraggable>
-      </main>
-
-      <!-- サイドバー（右カラム） -->
-      <aside class="sidebar" :class="{ 'mobile-is-open': isMobileSidebarOpen }">
-        <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">&times;</button>
-        <section class="gpa-display">
-          <div class="gpa-item">
-            <div class="gpa-label">f-GPA</div>
-            <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
-            <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
-          </div>
-          <div class="gpa-item">
-            <div class="gpa-label">単位数</div>
-            <div class="gpa-main-value">
-              {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
-              <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0">(+{{ gpaStats.totalInProgressCredits }})</span>
+    <div class="container">
+      <!-- 2カラムレイアウトのラッパー -->
+      <div class="layout-wrapper">
+        
+        <!-- メインコンテンツ（左カラム） -->
+        <main class="main-content">
+          <section class="filter-controls">
+            <div class="filter-group">
+              <label for="filter-year">年度</label>
+              <select id="filter-year" v-model="selectedYear">
+                <option value="">すべて</option>
+                <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+              </select>
             </div>
-            <div class="gpa-range">
-              取得率: {{ gpaStats.currentRate }}%
-              <span v-if="gpaStats.totalInProgressCredits > 0">({{ gpaStats.prospectiveRate }}%)</span>
+            <div class="filter-group">
+              <label for="filter-term">開講時期</label>
+              <select id="filter-term" v-model="selectedTerm">
+                <option value="">すべて</option>
+                <option v-for="term in availableTerms" :key="term" :value="term">{{ term }}</option>
+              </select>
             </div>
+            <div class="filter-group">
+              <label for="filter-category">分野系列</label>
+              <select id="filter-category" v-model="selectedCategory">
+                <option value="">すべて</option>
+                <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+          </section>
+
+          <div class="table-header">
+            <div class="col-handle"></div>
+            <div class="col-index">#</div>
+            <div class="col-year">年度</div>
+            <div class="col-code">講義コード</div>
+            <div class="col-term">学期</div>
+            <div class="col-category">分野系列</div>
+            <div class="col-info">講義名</div>
+            <div class="col-instructors">担当者</div>
+            <div class="col-credits">単位数</div>
+            <div class="col-eval">評価</div>
           </div>
-        </section>
-        <div class="stats-container">
-          <section class="category-credits-display">
-            <h3>取得単位数（分野系列別）</h3>
-            <div class="category-grid">
-              <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
-                <span class="category-name">{{ category }}</span>
-                <span class="category-value">{{ credits }}単位</span>
+          <VueDraggable
+            v-model="rows"
+            tag="div"
+            class="syllabus-table"
+            handle=".drag-handle"
+            animation="150"
+            ghostClass="draggable-ghost"
+          >
+            <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper" v-show="shouldShowRow(row)">
+              <SyllabusRow
+                :row-index="index"
+                v-model:rishunen="row.rishunen"
+                v-model:kougicd="row.kougicd"
+                v-model:evaluation="row.evaluation"
+                :syllabus-data="row.syllabusData"
+                :is-loading="row.isLoading"
+                :error="row.error"
+                :is-duplicate="rowMetadata[row.id]?.isDuplicate"
+                :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
+                :crclumcd="crclumcd"
+                @fetch-request="handleFetch(row)"
+                @clear-row="clearRowData(row)"
+                @drag-start="onDragStart(index)"
+              />
+            </div>
+          </VueDraggable>
+        </main>
+
+        <!-- サイドバー（右カラム） -->
+        <aside class="sidebar" :class="{ 'mobile-is-open': isMobileSidebarOpen }">
+          <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">&times;</button>
+          <section class="gpa-display">
+            <div class="gpa-item">
+              <div class="gpa-label">f-GPA</div>
+              <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
+              <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
+            </div>
+            <div class="gpa-item">
+              <div class="gpa-label">単位数</div>
+              <div class="gpa-main-value">
+                {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
+                <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0">(+{{ gpaStats.totalInProgressCredits }})</span>
+              </div>
+              <div class="gpa-range">
+                取得率: {{ gpaStats.currentRate }}%
+                <span v-if="gpaStats.totalInProgressCredits > 0">({{ gpaStats.prospectiveRate }}%)</span>
               </div>
             </div>
           </section>
-          <section class="term-credits-display">
-            <h3>単位数（開講時期別）</h3>
-            <div class="term-grid">
-              <div v-for="group in groupedAndSortedCreditsByTerm" :key="group.year" class="year-group">
-                <div class="year-header">
-                  <h4>{{ group.year }}年度</h4>
-                  <span class="year-total">{{ group.yearStats.earned }} / {{ group.yearStats.attempted }} <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0">(+{{ group.yearStats.inProgress }})</span> 単位</span>
-                </div>
-                <div v-for="item in group.terms" :key="item.termName" class="term-item">
-                  <span class="term-name">{{ item.termName }}</span>
-                  <span class="term-value">{{ item.stats.earned }} / {{ item.stats.attempted }} <span class="in-progress-credits" v-if="item.stats.inProgress > 0">(+{{ item.stats.inProgress }})</span> 単位</span>
+          <div class="stats-container">
+            <section class="category-credits-display">
+              <h3>取得単位数（分野系列別）</h3>
+              <div class="category-grid">
+                <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
+                  <span class="category-name">{{ category }}</span>
+                  <span class="category-value">{{ credits }}単位</span>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-      </aside>
+            </section>
+            <section class="term-credits-display">
+              <h3>単位数（開講時期別）</h3>
+              <div class="term-grid">
+                <div v-for="group in groupedAndSortedCreditsByTerm" :key="group.year" class="year-group">
+                  <div class="year-header">
+                    <h4>{{ group.year }}年度</h4>
+                    <span class="year-total">{{ group.yearStats.earned }} / {{ group.yearStats.attempted }} <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0">(+{{ group.yearStats.inProgress }})</span> 単位</span>
+                  </div>
+                  <div v-for="item in group.terms" :key="item.termName" class="term-item">
+                    <span class="term-name">{{ item.termName }}</span>
+                    <span class="term-value">{{ item.stats.earned }} / {{ item.stats.attempted }} <span class="in-progress-credits" v-if="item.stats.inProgress > 0">(+{{ item.stats.inProgress }})</span> 単位</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
+      <!-- オーバーレイ -->
+      <div v-if="isMobileSidebarOpen" @click="isMobileSidebarOpen = false" class="sidebar-overlay"></div>
     </div>
-    <!-- オーバーレイ -->
-    <div v-if="isMobileSidebarOpen" @click="isMobileSidebarOpen = false" class="sidebar-overlay"></div>
   </div>
 </template>
 
 <style scoped>
 /* PC用のスタイル */
-.container { padding: 20px; font-family: sans-serif; max-width: 1600px; margin: 0 auto; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
+.container {
+  padding: 20px;
+  font-family: sans-serif;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 990;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 10px 20px;
+}
+
 .header-controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
 .file-operations { display: flex; gap: 8px; }
 .io-button { padding: 6px 12px; border: 1px solid #6c757d; background-color: #fff; color: #6c757d; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
@@ -299,15 +327,16 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 /* --- Mobile View --- */
 @media (max-width: 1023px) {
   .container { padding: 10px; }
-  .header {
+  .header-inner {
     flex-wrap: nowrap;
     justify-content: space-between;
+    padding: 10px;
   }
-  .header h1 {
+  .header-inner h1 {
     font-size: 1.2em;
   }
   .header-controls {
-    display: none; /* スマホではヘッダー内のコントロールを非表示 */
+    display: none;
   }
   .mobile-sidebar-toggle {
     display: block;
@@ -332,8 +361,9 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     transition: transform 0.3s ease-in-out;
     z-index: 1000;
     padding: 20px;
-    padding-top: 50px; /* クローズボタンのためのスペース */
+    padding-top: 50px;
     overflow-y: auto;
+    box-sizing: border-box; /* スクロール問題の修正 */
   }
   .sidebar.mobile-is-open {
     transform: translateX(0);
