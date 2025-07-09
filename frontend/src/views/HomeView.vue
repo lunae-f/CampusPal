@@ -14,7 +14,6 @@ const EVALUATION_RANGES = {
 const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
-const draggedIndex = ref(null)
 
 // サイドバーの開閉状態
 const isMobileSidebarOpen = ref(false)
@@ -52,6 +51,15 @@ onBeforeUpdate(() => {
 
 const onDragStart = (index) => {
   draggedIndex.value = index
+}
+const onDrop = (targetIndex) => {
+  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
+    draggedIndex.value = null
+    return
+  }
+  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0]
+  rows.value.splice(targetIndex, 0, draggedItem)
+  draggedIndex.value = null
 }
 
 const saveToFile = () => {
@@ -799,6 +807,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.year-group {
 }
 .year-header {
   display: flex;
