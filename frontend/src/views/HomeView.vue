@@ -36,6 +36,30 @@ const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.ko
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0, totalInProgressCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; if (row.evaluation) { totalAttemptedCredits += credits; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; } else { totalInProgressCredits += credits; } } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const currentRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; const prospectiveTotalAttempted = totalAttemptedCredits + totalInProgressCredits; const prospectiveTotalEarned = totalEarnedCredits + totalInProgressCredits; const prospectiveRate = prospectiveTotalAttempted > 0 ? (prospectiveTotalEarned / prospectiveTotalAttempted * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, totalInProgressCredits, currentRate: currentRate.toFixed(1), prospectiveRate: prospectiveRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation && row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
 const creditsByTerm = computed(() => { const termTotals = {}; for (const row of finalRowsForCalc.value) { if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) { const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`; if (!termTotals[termKey]) { termTotals[termKey] = { earned: 0, attempted: 0, inProgress: 0 }; } const credits = Number(row.syllabusData.credits); if(row.evaluation) { termTotals[termKey].attempted += credits; if (row.evaluation !== '不可') { termTotals[termKey].earned += credits; } } else { termTotals[termKey].inProgress += credits; } } } return termTotals; });
+
+const sortedCreditsByTerm = computed(() => {
+  const termOrder = [
+    '通年', '前期', '前期前半', '前期後半', '後期', '後期後半',
+    '通年（卒研）', '集中（前期）', '集中（後期）', '集中（通年）',
+    '通年（事例）', '通年（大学院）'
+  ];
+
+  const getOrderIndex = (termName) => {
+    const pureTerm = termName.split(' ')[1] || '';
+    const index = termOrder.indexOf(pureTerm);
+    return index === -1 ? Infinity : index;
+  };
+
+  return Object.keys(creditsByTerm.value).sort((a, b) => {
+    const yearA = parseInt(a);
+    const yearB = parseInt(b);
+    if (yearA !== yearB) {
+      return yearA - yearB;
+    }
+    return getOrderIndex(a) - getOrderIndex(b);
+  });
+});
+
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
 const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
@@ -91,9 +115,9 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       <section class="term-credits-display">
         <h3>単位数（開講時期別）</h3>
         <div class="term-grid">
-          <div v-for="(stats, term) in creditsByTerm" :key="term" class="term-item">
-            <span class="term-name">{{ term }}</span>
-            <span class="term-value">{{ stats.earned }} / {{ stats.attempted }} <span class="in-progress-credits" v-if="stats.inProgress > 0">(+{{ stats.inProgress }})</span> 単位</span>
+          <div v-for="termKey in sortedCreditsByTerm" :key="termKey" class="term-item">
+            <span class="term-name">{{ termKey }}</span>
+            <span class="term-value">{{ creditsByTerm[termKey].earned }} / {{ creditsByTerm[termKey].attempted }} <span class="in-progress-credits" v-if="creditsByTerm[termKey].inProgress > 0">(+{{ creditsByTerm[termKey].inProgress }})</span> 単位</span>
           </div>
         </div>
       </section>
@@ -103,7 +127,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       <div class="col-index">#</div>
       <div class="col-year">年度</div>
       <div class="col-code">講義コード</div>
-      <div class="col-term">学期</div>
+      <div class="col-term">開講時期</div>
       <div class="col-category">分野系列</div>
       <div class="col-info">講義名</div>
       <div class="col-instructors">担当者</div>
