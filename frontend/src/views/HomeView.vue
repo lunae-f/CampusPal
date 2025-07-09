@@ -4,14 +4,14 @@ import { VueDraggable } from 'vue-draggable-plus'
 import SyllabusRow from '../components/SyllabusRow.vue'
 import { fetchSyllabus } from '../services/syllabusApi.js'
 
-const STORAGE_KEY = 'gpa-calculator-data-v5'
+const STORAGE_KEY = 'gpa-calculator-data-v6' // バージョン更新
 const EVALUATION_RANGES = {
   秀: { minScore: 90, maxScore: 100 },
   優: { minScore: 80, maxScore: 89 },
   良: { minScore: 70, maxScore: 79 },
   可: { minScore: 60, maxScore: 69 },
 }
-const crclumcd = ref('s24160')
+// crclumcd の ref を削除
 const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
@@ -85,7 +85,8 @@ const saveToFile = () => {
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }
+    // crclumcd を保存オブジェクトから削除
+    const dataToSave = { rows: simplifiedRows }
     const jsonString = JSON.stringify(dataToSave, null, 2)
     const blob = new Blob([jsonString], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -125,12 +126,12 @@ const handleFileLoad = (event) => {
             })
           }
         }
-        loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value }
+        loadedData = { rows: simplifiedRows }
       } else {
         loadedData = JSON.parse(content)
       }
       if (loadedData && Array.isArray(loadedData.rows)) {
-        crclumcd.value = loadedData.crclumcd || crclumcd.value
+        // crclumcd の読み込みを削除
         const newRows = loadedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -326,10 +327,10 @@ const handleFetch = async (row) => {
   row.isLoading = true
   row.error = null
   try {
+    // crclumcd を fetchSyllabus の呼び出しから削除
     const data = await fetchSyllabus({
       kougicd: row.kougicd,
       rishunen: row.rishunen,
-      crclumcd: crclumcd.value,
     })
     row.syllabusData = data
   } catch (e) {
@@ -371,7 +372,7 @@ onMounted(() => {
     try {
       const savedData = JSON.parse(savedDataString)
       if (savedData.rows.length > 0) {
-        crclumcd.value = savedData.crclumcd
+        // crclumcd の読み込みを削除
         const newRows = savedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -410,7 +411,8 @@ watch(
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }
+    // crclumcd を保存オブジェクトから削除
+    const dataToSave = { rows: simplifiedRows }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
     if (newRows.length > 0) {
       const lastRow = newRows[newRows.length - 1]
@@ -459,10 +461,7 @@ watch(
               style="display: none"
             />
           </div>
-          <div class="global-input" title="s+学籍番号上5桁">
-            <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
-            <input id="crclumcd" v-model="crclumcd" />
-          </div>
+          <!-- カリキュラムコードの入力ボックスを削除 -->
         </div>
         <!-- モバイル用サイドバー開閉ボタン -->
         <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
@@ -661,7 +660,6 @@ watch(
                   :error="row.error"
                   :is-duplicate="rowMetadata[row.id]?.isDuplicate"
                   :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
-                  :crclumcd="crclumcd"
                   @fetch-request="handleFetch(row)"
                   @clear-row="clearRowData(row)"
                   @drag-start="onDragStart(index)"
