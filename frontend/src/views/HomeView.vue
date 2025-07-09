@@ -92,7 +92,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
         <div class="gpa-range">
           取得率: {{ gpaStats.currentRate }}%
-          <span v-if="gpaStats.totalInProgressCredits > 0">(見込: {{ gpaStats.prospectiveRate }}%)</span>
+          <span v-if="gpaStats.totalInProgressCredits > 0">({{ gpaStats.prospectiveRate }}%)</span>
         </div>
       </div>
     </section>
