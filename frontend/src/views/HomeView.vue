@@ -226,9 +226,8 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .term-value { font-weight: bold; }
 .filter-controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  flex-wrap: wrap; /* 画面が狭くなった時に折り返す */
+  gap: 20px;
   margin-bottom: 20px;
   padding: 15px;
   background-color: #f8f9fa;
@@ -242,7 +241,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .filter-group label {
   font-size: 0.9em;
   font-weight: bold;
-  white-space: nowrap; /* 文字列の改行を防ぐ */
+  white-space: nowrap;
 }
 .filter-group select {
   padding: 4px 8px;
@@ -267,6 +266,16 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     border: 1px solid #ddd;
     border-radius: 8px;
     background-color: #fff;
+  }
+
+  /* スマホ用の絞り込みスタイル（縦並び） */
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch; /* 幅をコンテナに合わせる */
+    gap: 10px;
+  }
+  .filter-group {
+    justify-content: space-between; /* ラベルと選択欄を両端に配置 */
   }
 
   /* --- Final Card Layout (Revision 17) --- */
@@ -302,7 +311,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
   :deep(.col-gpa) { grid-area: 5 / 1 / 5 / 8; }
 
   /* --- Style adjustments --- */
-  /* 分野系列と担当者のスタイル */
   :deep(.col-category),
   :deep(.col-instructors) {
     font-size: 0.9em;
@@ -313,19 +321,13 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     color: #555;
     font-size: 1em;
   }
-
-  /* 1行目のラベルを非表示に */
   :deep(.col-handle)::before, :deep(.col-index)::before, :deep(.col-year)::before,
   :deep(.col-code)::before, :deep(.col-term)::before {
     display: none;
   }
-  
-  /* 右寄せ要素のラベルは左揃えに戻す */
   :deep(.col-credits)::before, :deep(.col-gpa)::before {
     text-align: left;
   }
-  
-  /* 単位数セクションの調整 */
   :deep(.col-credits .credits-input) {
     display: inline-block;
     width: 4em;
@@ -337,8 +339,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     vertical-align: middle;
     margin-left: 4px;
   }
-  
-  /* 汎用入力スタイル */
   :deep(input), :deep(select) {
     font-size: 1em; padding: 6px; background-color: #f7f7f7;
     border: 1px solid #ccc; border-radius: 4px;
