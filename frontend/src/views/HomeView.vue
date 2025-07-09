@@ -193,15 +193,20 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 
 <style scoped>
 .container { padding: 20px; font-family: sans-serif; max-width: 1600px; margin: 0 auto; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.header-controls { display: flex; align-items: center; gap: 24px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
+.header-controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
 .file-operations { display: flex; gap: 8px; }
 .io-button { padding: 6px 12px; border: 1px solid #6c757d; background-color: #fff; color: #6c757d; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
 .io-button:hover { background-color: #f8f9fa; }
 .global-input { display: flex; align-items: center; gap: 8px; }
-.global-input input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+.global-input input {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 120px;
+}
 .tooltip-label { cursor: help; border-bottom: 1px dotted #6c757d; }
-.gpa-display { background-color: #e9f7ef; border: 1px solid #a9d6b8; border-radius: 8px; padding: 16px; margin-bottom: 10px; display: flex; justify-content: space-around; }
+.gpa-display { background-color: #e9f7ef; border: 1px solid #a9d6b8; border-radius: 8px; padding: 16px; margin-bottom: 10px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;}
 .gpa-item { text-align: center; }
 .gpa-label { font-size: 0.9em; color: #333; }
 .gpa-main-value { font-weight: bold; font-size: 2em; color: #00754a; line-height: 1.2; }
@@ -227,6 +232,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
   padding: 15px;
   background-color: #f8f9fa;
   border-radius: 8px;
+  flex-wrap: wrap;
 }
 .filter-group {
   display: flex;
@@ -247,4 +253,96 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .table-header .col-info, .table-header .col-category, .table-header .col-instructors { text-align: left; }
 .drag-wrapper { border-bottom: 1px solid #eee; }
 .draggable-ghost { opacity: 0.5; background: #cce5ff; }
+
+/* --- Mobile View --- */
+@media (max-width: 768px) {
+  .container { padding: 10px; }
+  .header { flex-direction: column; align-items: stretch; }
+  .header-controls { flex-direction: column; align-items: stretch; gap: 10px; }
+  .stats-container { grid-template-columns: 1fr; }
+  .table-header { display: none; }
+  .syllabus-table { display: flex; flex-direction: column; gap: 10px; }
+  .drag-wrapper {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+  }
+
+  /* --- Final Card Layout (Revision 17) --- */
+  :deep(.syllabus-row) {
+    display: grid;
+    grid-template-columns: auto auto repeat(10, 1fr);
+    /* 行間を狭くする */
+    gap: 8px 10px;
+    padding: 12px;
+    align-items: center;
+  }
+  :deep(.syllabus-row > div) {
+    padding: 0; border: none; text-align: left;
+  }
+  :deep(.syllabus-row > div::before) {
+    content: attr(data-label);
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  /* grid-area definitions */
+  :deep(.col-handle) { grid-area: 1 / 1; }
+  :deep(.col-index) { grid-area: 1 / 2; font-weight: bold; }
+  :deep(.col-year) { grid-area: 1 / 3 / 1 / 6; }
+  :deep(.col-code) { grid-area: 1 / 6 / 1 / 10; }
+  :deep(.col-term) { grid-area: 1 / 10 / 1 / 13; }
+  :deep(.col-info) { grid-area: 2 / 1 / 2 / 13; }
+  :deep(.col-category) { grid-area: 3 / 1 / 3 / 8; }
+  :deep(.col-instructors) { grid-area: 3 / 8 / 3 / 13; }
+  :deep(.col-eval) { grid-area: 4 / 1 / 4 / 8; }
+  :deep(.col-credits) { grid-area: 4 / 8 / 4 / 13; text-align: right; }
+  :deep(.col-gpa) { grid-area: 5 / 1 / 5 / 8; }
+
+  /* --- Style adjustments --- */
+  /* 分野系列と担当者のスタイル */
+  :deep(.col-category),
+  :deep(.col-instructors) {
+    font-size: 0.9em;
+    color: #555;
+  }
+  :deep(.col-category select),
+  :deep(.col-instructors input) {
+    color: #555;
+    font-size: 1em;
+  }
+
+  /* 1行目のラベルを非表示に */
+  :deep(.col-handle)::before, :deep(.col-index)::before, :deep(.col-year)::before,
+  :deep(.col-code)::before, :deep(.col-term)::before {
+    display: none;
+  }
+  
+  /* 右寄せ要素のラベルは左揃えに戻す */
+  :deep(.col-credits)::before, :deep(.col-gpa)::before {
+    text-align: left;
+  }
+  
+  /* 単位数セクションの調整 */
+  :deep(.col-credits .credits-input) {
+    display: inline-block;
+    width: 4em;
+    vertical-align: middle;
+  }
+  :deep(.col-credits)::after {
+    content: "単位";
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  
+  /* 汎用入力スタイル */
+  :deep(input), :deep(select) {
+    font-size: 1em; padding: 6px; background-color: #f7f7f7;
+    border: 1px solid #ccc; border-radius: 4px;
+    width: 100%; box-sizing: border-box;
+  }
+}
 </style>
