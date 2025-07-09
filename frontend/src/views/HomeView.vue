@@ -11,7 +11,6 @@ const rows = ref([]);
 const fileInput = ref(null);
 const rowRefs = ref([]);
 
-// --- ここから修正 ---
 // フィルタリング用の状態
 const selectedYear = ref('');
 const selectedTerm = ref('');
@@ -29,7 +28,6 @@ const shouldShowRow = (row) => {
   const categoryMatch = !selectedCategory.value || row.syllabusData?.category?.startsWith(selectedCategory.value);
   return yearMatch && termMatch && categoryMatch;
 };
-// --- ここまで修正 ---
 
 onBeforeUpdate(() => {
   rowRefs.value = [];
@@ -192,6 +190,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 </template>
 
 <style scoped>
+/* PC用のスタイル */
 .container { padding: 20px; font-family: sans-serif; max-width: 1600px; margin: 0 auto; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
 .header-controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
@@ -227,12 +226,13 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .term-value { font-weight: bold; }
 .filter-controls {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   margin-bottom: 20px;
   padding: 15px;
   background-color: #f8f9fa;
   border-radius: 8px;
-  flex-wrap: wrap;
 }
 .filter-group {
   display: flex;
@@ -242,6 +242,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .filter-group label {
   font-size: 0.9em;
   font-weight: bold;
+  white-space: nowrap; /* 文字列の改行を防ぐ */
 }
 .filter-group select {
   padding: 4px 8px;
@@ -272,7 +273,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
   :deep(.syllabus-row) {
     display: grid;
     grid-template-columns: auto auto repeat(10, 1fr);
-    /* 行間を狭くする */
     gap: 8px 10px;
     padding: 12px;
     align-items: center;
