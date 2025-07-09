@@ -19,12 +19,10 @@ const rowRefs = ref([])
 const isMobileSidebarOpen = ref(false)
 const isFilterSidebarOpen = ref(true) // PC用フィルターサイドバー
 
-// ★ 修正箇所: 分野系列のフィルタリング状態を削除
 const selectedYears = ref([])
 const selectedTerms = ref([])
 const selectedEvaluations = ref([])
 
-// ★ 修正箇所: 分野系列の選択肢生成を削除
 const availableYears = computed(() =>
   [...new Set(rows.value.map((row) => row.rishunen).filter(Boolean))].sort((a, b) => b - a),
 )
@@ -33,7 +31,6 @@ const availableTerms = computed(() =>
 )
 const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価']
 
-// ★ 修正箇所: shouldShowRow から分野系列のマッチングロジックを削除
 const shouldShowRow = (row) => {
   const yearMatch =
     selectedYears.value.length === 0 || (row.rishunen && selectedYears.value.includes(row.rishunen))
@@ -235,9 +232,6 @@ const gpaStats = computed(() => {
     avgGpa: avgGpa.toFixed(3),
   }
 })
-
-// ★ 修正箇所: creditsByCategory を削除
-// const creditsByCategory = computed(...)
 
 const groupedAndSortedCreditsByTerm = computed(() => {
   const termTotals = {}
@@ -477,7 +471,6 @@ watch(
               </div>
             </div>
           </div>
-          <!-- ★ 修正箇所: 分野系列のフィルターを削除 -->
           <div class="filter-group">
             <label>評価</label>
             <div class="checkbox-group">
@@ -541,7 +534,6 @@ watch(
                       </div>
                     </div>
                   </div>
-                  <!-- ★ 修正箇所: 分野系列のモバイルフィルターを削除 -->
                   <div class="filter-group">
                     <label>評価</label>
                     <div class="checkbox-group">
@@ -564,7 +556,6 @@ watch(
               </details>
             </section>
 
-            <!-- ★ 修正箇所: テーブルヘッダーから分野系列を削除 -->
             <div class="table-header">
               <div class="col-handle"></div>
               <div class="col-index">#</div>
@@ -636,7 +627,6 @@ watch(
               </div>
             </section>
             <div class="stats-container">
-              <!-- ★ 修正箇所: 分野系列別の単位数表示を削除 -->
               <section class="term-credits-display">
                 <h3>単位数（開講時期別）</h3>
                 <div class="term-grid">
@@ -887,7 +877,6 @@ watch(
   white-space: normal;
 }
 
-/* ★ 修正箇所: table-header の grid-template-columns から分野系列の分を削除 */
 .table-header {
   display: grid;
   grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
@@ -1091,99 +1080,5 @@ watch(
     background-color: #fff;
   }
 
-  :deep(.syllabus-row) {
-    display: grid;
-    grid-template-columns: auto auto repeat(10, 1fr);
-    gap: 8px 10px;
-    padding: 12px;
-    align-items: center;
-  }
-  :deep(.syllabus-row > div) {
-    padding: 0;
-    border: none;
-    text-align: left;
-  }
-  :deep(.syllabus-row > div::before) {
-    content: attr(data-label);
-    font-size: 0.8em;
-    color: #666;
-    margin-bottom: 4px;
-    display: block;
-  }
-
-  :deep(.col-handle) {
-    grid-area: 1 / 1;
-  }
-  :deep(.col-index) {
-    grid-area: 1 / 2;
-    font-weight: bold;
-  }
-  :deep(.col-year) {
-    grid-area: 1 / 3 / 1 / 6;
-  }
-  :deep(.col-code) {
-    grid-area: 1 / 6 / 1 / 10;
-  }
-  :deep(.col-term) {
-    grid-area: 1 / 10 / 1 / 13;
-  }
-  :deep(.col-info) {
-    grid-area: 2 / 1 / 2 / 13;
-  }
-  /* ★ 修正箇所: モバイル表示のグリッドエリアから分野系列を削除 */
-  :deep(.col-instructors) {
-    grid-area: 3 / 1 / 3 / 13;
-  }
-  :deep(.col-eval) {
-    grid-area: 4 / 1 / 4 / 8;
-  }
-  :deep(.col-credits) {
-    grid-area: 4 / 8 / 4 / 13;
-    text-align: right;
-  }
-  :deep(.col-gpa) {
-    grid-area: 5 / 1 / 5 / 8;
-  }
-
-  :deep(.col-instructors) {
-    font-size: 0.9em;
-    color: #555;
-  }
-  :deep(.col-instructors input) {
-    color: #555;
-    font-size: 1em;
-  }
-  :deep(.col-handle)::before,
-  :deep(.col-index)::before,
-  :deep(.col-year)::before,
-  :deep(.col-code)::before,
-  :deep(.col-term)::before {
-    display: none;
-  }
-  :deep(.col-credits)::before,
-  :deep(.col-gpa)::before {
-    text-align: left;
-  }
-  :deep(.col-credits .credits-input) {
-    display: inline-block;
-    width: 4em;
-    vertical-align: middle;
-  }
-  :deep(.col-credits)::after {
-    content: '単位';
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 4px;
-  }
-  :deep(input),
-  :deep(select) {
-    font-size: 1em;
-    padding: 6px;
-    background-color: #f7f7f7;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-  }
 }
 </style>
