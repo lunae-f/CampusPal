@@ -269,7 +269,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 @media (min-width: 1024px) { /* より広い画面で適用 */
   .layout-wrapper {
     display: grid;
-    grid-template-columns: 3fr 1fr; /* 左:右 = 3:1 の比率に変更 */
+    grid-template-columns: 3.3027756377fr 1fr; /* 青銅比 (約3.3:1) に変更 */
     gap: 24px;
   }
   .sidebar {
