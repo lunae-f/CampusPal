@@ -10,7 +10,7 @@ import uvicorn
 app = FastAPI(
     title="CampusPal API",
     description="東京都市大学のシラバス情報を取得するためのAPIです。",
-    version="1.1.0",
+    version="1.3.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
@@ -45,16 +45,15 @@ LABEL_TO_KEY_MAP = {
     "担当者": "instructors",
 }
 
-# crclumcd 引数を削除
 def get_syllabus_data(kougicd: str, rishunen: str):
     """
     指定されたパラメータでシラバスサイトをスクレイピングし、基本情報を抽出する。
     """
+    # ★ 修正箇所: value(semekikn) を '1' に固定
     params = {
         "value(risyunen)": rishunen,
-        "value(semekikn)": "1", # セメスター（1:前期, 2:後期, 0:通年）固定
+        "value(semekikn)": "1",
         "value(kougicd)": kougicd,
-        # "value(crclumcd)" を削除
     }
     try:
         response = requests.get(BASE_URL, params=params, timeout=10)
@@ -100,7 +99,6 @@ def get_syllabus_data(kougicd: str, rishunen: str):
         raise HTTPException(status_code=500, detail=f"データの解析中に予期せぬエラーが発生しました: {e}")
 
 @app.get("/api/syllabus/{kougicd}", summary="シラバス情報取得")
-# crclumcd Query を削除
 def read_syllabus(
     kougicd: str,
     rishunen: str = Query(..., description="履修年度 (例: 2024)", regex="^[0-9]{4}$")
@@ -110,13 +108,11 @@ def read_syllabus(
     データはRedisに1日間キャッシュされます。
     """
     if not redis_client:
-        # crclumcd の引数を削除
         syllabus_info = get_syllabus_data(kougicd, rishunen)
         if not syllabus_info:
             raise HTTPException(status_code=404, detail="指定された条件の情報が見つかりませんでした。")
         return syllabus_info
 
-    # キャッシュ用のキーから crclumcd を削除
     cache_key = f"syllabus:{rishunen}:{kougicd}"
 
     try:
@@ -126,7 +122,6 @@ def read_syllabus(
             return json.loads(cached_data)
 
         print(f"Cache MISS: {cache_key}")
-        # crclumcd の引数を削除
         syllabus_info = get_syllabus_data(kougicd, rishunen)
         if not syllabus_info:
             raise HTTPException(status_code=404, detail="指定された条件の情報が見つかりませんでした。")
@@ -137,7 +132,6 @@ def read_syllabus(
 
     except redis.exceptions.RedisError as e:
         print(f"Redis Error: {e}")
-        # crclumcd の引数を削除
         syllabus_info = get_syllabus_data(kougicd, rishunen)
         if not syllabus_info:
             raise HTTPException(status_code=404, detail="指定された条件の情報が見つかりませんでした。")

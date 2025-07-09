@@ -11,7 +11,6 @@ const props = defineProps({
   error: String,
   isDuplicate: Boolean,
   isOlderAttempt: Boolean,
-  crclumcd: String,
 })
 const emit = defineEmits([
   'update:rishunen',
@@ -29,16 +28,22 @@ const isCodeInvalid = computed(() => {
   const regex = /^[a-z]{3}\d{6}$/i
   return !regex.test(props.kougicd)
 })
+
+// ★ 修正箇所: syllabusUrl の computed プロパティ
 const syllabusUrl = computed(() => {
-  if (!props.rishunen || !props.kougicd || !props.crclumcd) return null
+  if (!props.rishunen || !props.kougicd) {
+    return null
+  }
+
+  // semekikn は常に '1' に固定する
   const params = new URLSearchParams({
     'value(risyunen)': props.rishunen,
     'value(semekikn)': '1',
     'value(kougicd)': props.kougicd,
-    'value(crclumcd)': props.crclumcd,
   })
   return `https://websrv.tcu.ac.jp/tcu_web_v3/slbssbdr.do?${params.toString()}`
 })
+
 const fullInstructorText = computed(() => {
   if (!props.syllabusData?.instructors) return ''
   return Array.isArray(props.syllabusData.instructors)
