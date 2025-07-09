@@ -10,7 +10,7 @@ import uvicorn
 app = FastAPI(
     title="CampusPal API",
     description="東京都市大学のシラバス情報を取得するためのAPIです。",
-    version="1.3.0",
+    version="1.4.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
@@ -49,7 +49,6 @@ def get_syllabus_data(kougicd: str, rishunen: str):
     """
     指定されたパラメータでシラバスサイトをスクレイピングし、基本情報を抽出する。
     """
-    # ★ 修正箇所: value(semekikn) を '1' に固定
     params = {
         "value(risyunen)": rishunen,
         "value(semekikn)": "1",
@@ -105,7 +104,7 @@ def read_syllabus(
 ):
     """
     講義コードと履修年度に基づいてシラバス情報を取得します。
-    データはRedisに1日間キャッシュされます。
+    データはRedisに無期限でキャッシュされます。
     """
     if not redis_client:
         syllabus_info = get_syllabus_data(kougicd, rishunen)
@@ -126,7 +125,8 @@ def read_syllabus(
         if not syllabus_info:
             raise HTTPException(status_code=404, detail="指定された条件の情報が見つかりませんでした。")
 
-        redis_client.setex(cache_key, 86400, json.dumps(syllabus_info, ensure_ascii=False))
+        # ★ 修正箇所: setexをsetに変更し、有効期限をなくす
+        redis_client.set(cache_key, json.dumps(syllabus_info, ensure_ascii=False))
 
         return syllabus_info
 
