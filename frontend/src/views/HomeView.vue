@@ -10,7 +10,9 @@ const crclumcd = ref('s24160');
 const rows = ref([]);
 const fileInput = ref(null);
 
-// ドラッグ＆ドロップのロジックを削除
+const draggedIndex = ref(null);
+const onDragStart = (index) => { draggedIndex.value = index; };
+const onDrop = (targetIndex) => { if (draggedIndex.value === null || draggedIndex.value === targetIndex) { draggedIndex.value = null; return; } const draggedItem = rows.value.splice(draggedIndex.value, 1)[0]; rows.value.splice(targetIndex, 0, draggedItem); draggedIndex.value = null; };
 
 const saveToFile = () => { try { const simplifiedRows = rows.value.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' })); const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }; const jsonString = JSON.stringify(dataToSave, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'CampusPal_data.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch (error) { alert('ファイルの保存に失敗しました。'); console.error(error); } };
 const triggerFileInput = () => { fileInput.value.click(); };
@@ -19,6 +21,27 @@ const rowMetadata = computed(() => { const metadata = {}; const kougicdCounts = 
 const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.evaluation && row.syllabusData?.course_name && !rowMetadata.value[row.id]?.isOlderAttempt);});
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; totalAttemptedCredits += credits; } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const acquisitionRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, acquisitionRate: acquisitionRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
+
+// --- ここから修正 ---
+const creditsByTerm = computed(() => {
+  const termTotals = {};
+  for (const row of finalRowsForCalc.value) {
+    if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) {
+      const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`;
+      if (!termTotals[termKey]) {
+        termTotals[termKey] = { earned: 0, attempted: 0 };
+      }
+      const credits = Number(row.syllabusData.credits);
+      termTotals[termKey].attempted += credits;
+      if (row.evaluation !== '不可') {
+        termTotals[termKey].earned += credits;
+      }
+    }
+  }
+  return termTotals;
+});
+// --- ここまで修正 ---
+
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
 const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
@@ -55,15 +78,26 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         <div class="gpa-range">取得率: {{ gpaStats.acquisitionRate }}%</div>
       </div>
     </section>
-    <section class="category-credits-display">
-      <h3>取得単位数（分野系列別）</h3>
-      <div class="category-grid">
-        <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
-          <span class="category-name">{{ category }}</span>
-          <span class="category-value">{{ credits }}単位</span>
+    <div class="stats-container">
+      <section class="category-credits-display">
+        <h3>取得単位数（分野系列別）</h3>
+        <div class="category-grid">
+          <div v-for="(credits, category) in creditsByCategory" :key="category" class="category-item">
+            <span class="category-name">{{ category }}</span>
+            <span class="category-value">{{ credits }}単位</span>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <section class="term-credits-display">
+        <h3>単位数（学期別）</h3>
+        <div class="term-grid">
+          <div v-for="(stats, term) in creditsByTerm" :key="term" class="term-item">
+            <span class="term-name">{{ term }}</span>
+            <span class="term-value">{{ stats.earned }} / {{ stats.attempted }} 単位</span>
+          </div>
+        </div>
+      </section>
+    </div>
     <div class="table-header">
       <div class="col-handle"></div>
       <div class="col-index">#</div>
@@ -119,34 +153,25 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .gpa-label { font-size: 0.9em; color: #333; }
 .gpa-main-value { font-weight: bold; font-size: 2em; color: #00754a; line-height: 1.2; }
 .gpa-range { font-size: 0.8em; color: #6c757d; }
-.category-credits-display { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-.category-credits-display h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1em; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
-.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px 32px; font-size: 0.9em; }
-.category-item { display: flex; justify-content: flex-start; align-items: baseline; gap: 0.8em; }
-.category-value { font-weight: bold; }
-.table-header {
+.stats-container {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
-  gap: 12px;
-  font-weight: bold;
-  border-bottom: 2px solid #333;
-  padding: 0 4px 8px 4px;
-  color: #555;
-  font-size: 0.8em;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
 }
-.table-header > div {
-  text-align: center;
+.category-credits-display, .term-credits-display {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
 }
-.table-header .col-info,
-.table-header .col-category,
-.table-header .col-instructors {
-  text-align: left;
-}
-.drag-wrapper {
-  border-bottom: 1px solid #eee;
-}
-.draggable-ghost {
-  opacity: 0.5;
-  background: #cce5ff;
-}
+.category-credits-display h3, .term-credits-display h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1em; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+.category-grid, .term-grid { display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.9em; }
+.category-item, .term-item { display: flex; justify-content: space-between; }
+.category-value, .term-value { font-weight: bold; }
+.table-header { display: grid; grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px; gap: 12px; font-weight: bold; border-bottom: 2px solid #333; padding: 0 4px 8px 4px; color: #555; font-size: 0.8em; }
+.table-header > div { text-align: center; }
+.table-header .col-info, .table-header .col-category, .table-header .col-instructors { text-align: left; }
+.drag-wrapper { border-bottom: 1px solid #eee; }
+.draggable-ghost { opacity: 0.5; background: #cce5ff; }
 </style>
