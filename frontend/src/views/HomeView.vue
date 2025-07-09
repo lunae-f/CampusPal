@@ -11,7 +11,6 @@ const EVALUATION_RANGES = {
   良: { minScore: 70, maxScore: 79 },
   可: { minScore: 60, maxScore: 69 },
 }
-// crclumcd の ref を削除
 const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
@@ -20,43 +19,33 @@ const rowRefs = ref([])
 const isMobileSidebarOpen = ref(false)
 const isFilterSidebarOpen = ref(true) // PC用フィルターサイドバー
 
-// フィルタリング用の状態（複数選択対応のため配列に変更）
+// ★ 修正箇所: 分野系列のフィルタリング状態を削除
 const selectedYears = ref([])
 const selectedTerms = ref([])
-const selectedCategories = ref([])
-const selectedEvaluations = ref([]) // 評価フィルター用の状態を追加
+const selectedEvaluations = ref([])
 
-// フィルタリングの選択肢を動的に生成
+// ★ 修正箇所: 分野系列の選択肢生成を削除
 const availableYears = computed(() =>
   [...new Set(rows.value.map((row) => row.rishunen).filter(Boolean))].sort((a, b) => b - a),
 )
 const availableTerms = computed(() =>
   [...new Set(rows.value.map((row) => row.syllabusData?.term).filter(Boolean))].sort(),
 )
-const availableCategories = computed(() =>
-  [
-    ...new Set(rows.value.map((row) => row.syllabusData?.category?.split('・')[0]).filter(Boolean)),
-  ].sort(),
-)
-const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価'] // 評価の選択肢
+const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価']
 
-// 行が表示されるべきかどうかを判断する関数（評価のロジックを追加）
+// ★ 修正箇所: shouldShowRow から分野系列のマッチングロジックを削除
 const shouldShowRow = (row) => {
   const yearMatch =
     selectedYears.value.length === 0 || (row.rishunen && selectedYears.value.includes(row.rishunen))
   const termMatch =
     selectedTerms.value.length === 0 ||
     (row.syllabusData?.term && selectedTerms.value.includes(row.syllabusData.term))
-  const categoryMatch =
-    selectedCategories.value.length === 0 ||
-    (row.syllabusData?.category &&
-      selectedCategories.value.includes(row.syllabusData.category.split('・')[0]))
   const evalMatch =
     selectedEvaluations.value.length === 0 ||
     (row.evaluation && selectedEvaluations.value.includes(row.evaluation)) ||
     (!row.evaluation && selectedEvaluations.value.includes('未評価'))
 
-  return yearMatch && termMatch && categoryMatch && evalMatch
+  return yearMatch && termMatch && evalMatch
 }
 
 onBeforeUpdate(() => {
@@ -85,7 +74,6 @@ const saveToFile = () => {
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    // crclumcd を保存オブジェクトから削除
     const dataToSave = { rows: simplifiedRows }
     const jsonString = JSON.stringify(dataToSave, null, 2)
     const blob = new Blob([jsonString], { type: 'application/json' })
@@ -131,7 +119,6 @@ const handleFileLoad = (event) => {
         loadedData = JSON.parse(content)
       }
       if (loadedData && Array.isArray(loadedData.rows)) {
-        // crclumcd の読み込みを削除
         const newRows = loadedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -248,23 +235,10 @@ const gpaStats = computed(() => {
     avgGpa: avgGpa.toFixed(3),
   }
 })
-const creditsByCategory = computed(() => {
-  const categoryTotals = {}
-  for (const row of finalRowsForCalc.value) {
-    if (
-      row.evaluation &&
-      row.evaluation !== '不可' &&
-      row.syllabusData?.category &&
-      row.syllabusData?.credits
-    ) {
-      const fullCategory = row.syllabusData.category
-      const categoryKey = fullCategory.split('・')[0]
-      const credits = Number(row.syllabusData.credits)
-      categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits
-    }
-  }
-  return categoryTotals
-})
+
+// ★ 修正箇所: creditsByCategory を削除
+// const creditsByCategory = computed(...)
+
 const groupedAndSortedCreditsByTerm = computed(() => {
   const termTotals = {}
   for (const row of finalRowsForCalc.value) {
@@ -327,7 +301,6 @@ const handleFetch = async (row) => {
   row.isLoading = true
   row.error = null
   try {
-    // crclumcd を fetchSyllabus の呼び出しから削除
     const data = await fetchSyllabus({
       kougicd: row.kougicd,
       rishunen: row.rishunen,
@@ -372,7 +345,6 @@ onMounted(() => {
     try {
       const savedData = JSON.parse(savedDataString)
       if (savedData.rows.length > 0) {
-        // crclumcd の読み込みを削除
         const newRows = savedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -411,7 +383,6 @@ watch(
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    // crclumcd を保存オブジェクトから削除
     const dataToSave = { rows: simplifiedRows }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
     if (newRows.length > 0) {
@@ -461,7 +432,6 @@ watch(
               style="display: none"
             />
           </div>
-          <!-- カリキュラムコードの入力ボックスを削除 -->
         </div>
         <!-- モバイル用サイドバー開閉ボタン -->
         <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
@@ -507,20 +477,7 @@ watch(
               </div>
             </div>
           </div>
-          <div class="filter-group">
-            <label>分野系列</label>
-            <div class="checkbox-group">
-              <div v-for="cat in availableCategories" :key="cat" class="checkbox-item">
-                <input
-                  type="checkbox"
-                  :id="`cat-${cat}`"
-                  :value="cat"
-                  v-model="selectedCategories"
-                />
-                <label :for="`cat-${cat}`">{{ cat }}</label>
-              </div>
-            </div>
-          </div>
+          <!-- ★ 修正箇所: 分野系列のフィルターを削除 -->
           <div class="filter-group">
             <label>評価</label>
             <div class="checkbox-group">
@@ -584,24 +541,7 @@ watch(
                       </div>
                     </div>
                   </div>
-                  <div class="filter-group">
-                    <label>分野系列</label>
-                    <div class="checkbox-group">
-                      <div
-                        v-for="cat in availableCategories"
-                        :key="`mobile-cat-${cat}`"
-                        class="checkbox-item"
-                      >
-                        <input
-                          type="checkbox"
-                          :id="`mobile-cat-${cat}`"
-                          :value="cat"
-                          v-model="selectedCategories"
-                        />
-                        <label :for="`mobile-cat-${cat}`">{{ cat }}</label>
-                      </div>
-                    </div>
-                  </div>
+                  <!-- ★ 修正箇所: 分野系列のモバイルフィルターを削除 -->
                   <div class="filter-group">
                     <label>評価</label>
                     <div class="checkbox-group">
@@ -624,13 +564,13 @@ watch(
               </details>
             </section>
 
+            <!-- ★ 修正箇所: テーブルヘッダーから分野系列を削除 -->
             <div class="table-header">
               <div class="col-handle"></div>
               <div class="col-index">#</div>
               <div class="col-year">年度</div>
               <div class="col-code">講義コード</div>
               <div class="col-term">学期</div>
-              <div class="col-category">分野系列</div>
               <div class="col-info">講義名</div>
               <div class="col-instructors">担当者</div>
               <div class="col-credits">単位数</div>
@@ -696,19 +636,7 @@ watch(
               </div>
             </section>
             <div class="stats-container">
-              <section class="category-credits-display">
-                <h3>取得単位数（分野系列別）</h3>
-                <div class="category-grid">
-                  <div
-                    v-for="(credits, category) in creditsByCategory"
-                    :key="category"
-                    class="category-item"
-                  >
-                    <span class="category-name">{{ category }}</span>
-                    <span class="category-value">{{ credits }}単位</span>
-                  </div>
-                </div>
-              </section>
+              <!-- ★ 修正箇所: 分野系列別の単位数表示を削除 -->
               <section class="term-credits-display">
                 <h3>単位数（開講時期別）</h3>
                 <div class="term-grid">
@@ -865,33 +793,18 @@ watch(
   grid-template-columns: 1fr;
   gap: 20px;
 }
-.category-credits-display,
 .term-credits-display {
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   padding: 16px;
 }
-.category-credits-display h3,
 .term-credits-display h3 {
   margin-top: 0;
   margin-bottom: 12px;
   font-size: 1.1em;
   border-bottom: 1px solid #ccc;
   padding-bottom: 8px;
-}
-.category-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  font-size: 0.9em;
-}
-.category-item {
-  display: flex;
-  justify-content: space-between;
-}
-.category-value {
-  font-weight: bold;
 }
 .term-grid {
   display: flex;
@@ -974,9 +887,10 @@ watch(
   white-space: normal;
 }
 
+/* ★ 修正箇所: table-header の grid-template-columns から分野系列の分を削除 */
 .table-header {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;
@@ -988,7 +902,6 @@ watch(
   text-align: center;
 }
 .table-header .col-info,
-.table-header .col-category,
 .table-header .col-instructors {
   text-align: left;
 }
@@ -1217,11 +1130,9 @@ watch(
   :deep(.col-info) {
     grid-area: 2 / 1 / 2 / 13;
   }
-  :deep(.col-category) {
-    grid-area: 3 / 1 / 3 / 8;
-  }
+  /* ★ 修正箇所: モバイル表示のグリッドエリアから分野系列を削除 */
   :deep(.col-instructors) {
-    grid-area: 3 / 8 / 3 / 13;
+    grid-area: 3 / 1 / 3 / 13;
   }
   :deep(.col-eval) {
     grid-area: 4 / 1 / 4 / 8;
@@ -1234,12 +1145,10 @@ watch(
     grid-area: 5 / 1 / 5 / 8;
   }
 
-  :deep(.col-category),
   :deep(.col-instructors) {
     font-size: 0.9em;
     color: #555;
   }
-  :deep(.col-category select),
   :deep(.col-instructors input) {
     color: #555;
     font-size: 1em;

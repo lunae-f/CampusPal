@@ -29,13 +29,11 @@ const isCodeInvalid = computed(() => {
   return !regex.test(props.kougicd)
 })
 
-// ★ 修正箇所: syllabusUrl の computed プロパティ
 const syllabusUrl = computed(() => {
   if (!props.rishunen || !props.kougicd) {
     return null
   }
 
-  // semekikn は常に '1' に固定する
   const params = new URLSearchParams({
     'value(risyunen)': props.rishunen,
     'value(semekikn)': '1',
@@ -114,9 +112,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
         <span v-else>&ndash;</span>
       </div>
     </div>
-    <div class="col-category">
-      <span v-if="syllabusData">{{ syllabusData.category }}</span>
-    </div>
+    <!-- ★ 修正箇所: col-category を削除 -->
     <div class="col-info">
       <div v-if="isLoading" class="loading-text">検索中...</div>
       <div v-if="error" class="error-message">{{ error }}</div>
@@ -127,7 +123,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
           }}</a>
         </div>
         <div class="course-details">
-          {{ syllabusData.department }} / {{ syllabusData.student_year }}
+          {{ syllabusData.student_year }}
         </div>
       </div>
     </div>
@@ -156,9 +152,10 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 </template>
 
 <style scoped>
+/* ★ 修正箇所: grid-template-columns から分野系列の分を削除 */
 .syllabus-row {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
   gap: 12px;
   align-items: center;
   padding: 8px 4px;
@@ -204,7 +201,6 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 }
 .col-year,
 .col-code,
-.col-category,
 .col-info,
 .col-instructors {
   text-align: left;

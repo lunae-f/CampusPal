@@ -10,7 +10,7 @@ import uvicorn
 app = FastAPI(
     title="CampusPal API",
     description="東京都市大学のシラバス情報を取得するためのAPIです。",
-    version="1.4.0",
+    version="1.6.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
@@ -33,13 +33,11 @@ except redis.exceptions.ConnectionError as e:
 # シラバス検索のベースURL
 BASE_URL = "https://websrv.tcu.ac.jp/tcu_web_v3/slbssbdr.do"
 
-# スクレイピングで取得するラベルと、JSONのキーのマッピング
+# ★ 修正箇所: LABEL_TO_KEY_MAP から "分野系列" を削除
 LABEL_TO_KEY_MAP = {
     "授業科目名": "course_name",
     "単位数": "credits",
     "開講年度": "academic_year",
-    "開講学科": "department",
-    "分野系列": "category",
     "学年": "student_year",
     "学期": "term",
     "担当者": "instructors",
@@ -87,8 +85,6 @@ def get_syllabus_data(kougicd: str, rishunen: str):
                                 data[key] = int(value)
                             except (ValueError, TypeError):
                                 data[key] = value
-                        elif key == "category":
-                            data[key] = value_cell.get_text(strip=True).replace('■', '')
                         else:
                             data[key] = value_cell.get_text(strip=True)
         return data
@@ -125,7 +121,6 @@ def read_syllabus(
         if not syllabus_info:
             raise HTTPException(status_code=404, detail="指定された条件の情報が見つかりませんでした。")
 
-        # ★ 修正箇所: setexをsetに変更し、有効期限をなくす
         redis_client.set(cache_key, json.dumps(syllabus_info, ensure_ascii=False))
 
         return syllabus_info
