@@ -13,14 +13,10 @@ const props = defineProps({
   isOlderAttempt: Boolean,
   crclumcd: String,
 });
-const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row', 'drag-start', 'focus-next']);
+// drag-start emitを削除
+const emit = defineEmits(['update:rishunen', 'update:kougicd', 'update:evaluation', 'fetch-request', 'clear-row']);
 
-const kougicdInput = ref(null);
-
-const focusInput = () => {
-  kougicdInput.value?.focus();
-};
-defineExpose({ focusInput });
+const debounceTimer = ref(null);
 
 const isCodeInvalid = computed(() => {
   if (!props.kougicd) return false;
@@ -57,19 +53,15 @@ const displayInstructorText = computed(() => {
 watch(
   [() => props.rishunen, () => props.kougicd],
   ([newYear, newCode], [oldYear, oldCode]) => {
-    if (newYear && newCode && !isCodeInvalid.value) {
-      emit('fetch-request');
-    } else if (!newCode && oldCode) {
+    clearTimeout(debounceTimer.value);
+    if (!newCode && oldCode) {
       emit('clear-row');
+      return;
     }
-  }
-);
-
-watch(
-  () => props.kougicd,
-  (newCode) => {
-    if (newCode && newCode.length === 9 && !isCodeInvalid.value) {
-      emit('focus-next');
+    if (newYear && newCode && !isCodeInvalid.value) {
+      debounceTimer.value = setTimeout(() => {
+        emit('fetch-request');
+      }, 500);
     }
   }
 );
@@ -77,8 +69,9 @@ watch(
 
 <template>
   <div class="syllabus-row" :class="{ 'is-success': syllabusData, 'is-error': error, 'is-older-attempt': isOlderAttempt, 'is-duplicate': isDuplicate }">
-    <div class="col-handle" @dragstart="$emit('drag-start')">
-      <span class="drag-handle" :draggable="true">⠿</span>
+    <div class="col-handle">
+      <!-- draggable属性とイベントを削除 -->
+      <span class="drag-handle">⠿</span>
     </div>
     <div class="col-index">
       {{ rowIndex + 1 }}
@@ -87,15 +80,7 @@ watch(
       <input :value="rishunen" @input="$emit('update:rishunen', $event.target.value)" placeholder="年度" class="input-field" />
     </div>
     <div class="col-code">
-      <input 
-        ref="kougicdInput" 
-        :value="kougicd" 
-        @input="$emit('update:kougicd', $event.target.value)" 
-        placeholder="講義コード" 
-        class="input-field" 
-        :class="{ 'is-invalid': isCodeInvalid }" 
-        maxlength="9" 
-      />
+      <input :value="kougicd" @input="$emit('update:kougicd', $event.target.value)" placeholder="講義コード" class="input-field" :class="{ 'is-invalid': isCodeInvalid }" maxlength="9" />
     </div>
     <div class="col-term">
       <span v-if="syllabusData">{{ syllabusData.term }}</span>

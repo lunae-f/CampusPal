@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
 import SyllabusRow from '../components/SyllabusRow.vue';
 import { fetchSyllabus } from '../services/syllabusApi.js';
 
@@ -9,24 +10,7 @@ const crclumcd = ref('s24160');
 const rows = ref([]);
 const fileInput = ref(null);
 
-// --- ここから修正 ---
-// ドラッグ＆ドロップのロジック
-const draggedIndex = ref(null);
-
-const onDragStart = (index) => {
-  draggedIndex.value = index;
-};
-
-const onDrop = (targetIndex) => {
-  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
-    draggedIndex.value = null;
-    return;
-  }
-  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0];
-  rows.value.splice(targetIndex, 0, draggedItem);
-  draggedIndex.value = null;
-};
-// --- ここまで修正 ---
+// ドラッグ＆ドロップのロジックを削除
 
 const saveToFile = () => { try { const simplifiedRows = rows.value.filter(row => row.kougicd).map(row => ({ rishunen: row.rishunen, kougicd: row.kougicd, evaluation: row.evaluation || '' })); const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }; const jsonString = JSON.stringify(dataToSave, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'CampusPal_data.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch (error) { alert('ファイルの保存に失敗しました。'); console.error(error); } };
 const triggerFileInput = () => { fileInput.value.click(); };
@@ -92,15 +76,15 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       <div class="col-credits">単位数</div>
       <div class="col-eval">評価</div>
     </div>
-    <div class="syllabus-table">
-      <div 
-        v-for="(row, index) in rows"
-        :key="row.id"
-        @drop.prevent="onDrop(index)"
-        @dragover.prevent
-        class="drag-wrapper"
-        :class="{ 'dragging': draggedIndex === index }"
-      >
+    <VueDraggable
+      v-model="rows"
+      tag="div"
+      class="syllabus-table"
+      handle=".drag-handle"
+      animation="150"
+      ghostClass="draggable-ghost"
+    >
+      <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper">
         <SyllabusRow
           :row-index="index"
           v-model:rishunen="row.rishunen"
@@ -114,10 +98,9 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           :crclumcd="crclumcd"
           @fetch-request="handleFetch(row)"
           @clear-row="clearRowData(row)"
-          @drag-start="onDragStart(index)"
         />
       </div>
-    </div>
+    </VueDraggable>
   </main>
 </template>
 
@@ -162,7 +145,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .drag-wrapper {
   border-bottom: 1px solid #eee;
 }
-.dragging {
+.draggable-ghost {
   opacity: 0.5;
   background: #cce5ff;
 }
