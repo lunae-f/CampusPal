@@ -12,15 +12,46 @@ const isLicenseVisible = ref(false);
     <footer class="app-footer">
       <a href="https://github.com/lunae-f/CampusPal" target="_blank" rel="noopener noreferrer">CampusPal</a>, 
       made with ❤️‍🔥 by Lunae. | 
-      <a href="#" @click.prevent="isLicenseVisible = true" class="footer-link">MIT License</a>
+      <!-- リンクテキストを変更し、クリックでモーダルを表示 -->
+      <a href="#" @click.prevent="isLicenseVisible = true" class="footer-link">Licenses</a>
     </footer>
 
+    <!-- ライセンス表示用モーダル -->
     <div v-if="isLicenseVisible" class="modal-overlay" @click.self="isLicenseVisible = false">
       <div class="modal-content">
         <button @click="isLicenseVisible = false" class="close-button">&times;</button>
-        <h3>MIT License</h3>
+        <h2>Licenses</h2>
+
+        <h3>CampusPal</h3>
         <pre class="license-text">
+MIT License
+
 Copyright (c) 2025 Lunae
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+        </pre>
+
+        <h3>vue-draggable-plus</h3>
+        <pre class="license-text">
+MIT License
+
+Copyright (c) 2023 丶远方
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +101,6 @@ SOFTWARE.
 .app-footer a:hover {
   text-decoration: underline;
 }
-/* ボタンのように見えないようにするためのスタイル */
 .footer-link {
   background: none;
   border: none;
@@ -78,7 +108,7 @@ SOFTWARE.
   cursor: pointer;
 }
 
-/* --- ここからモーダル用のスタイル --- */
+/* --- モーダル用のスタイル --- */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -95,6 +125,7 @@ SOFTWARE.
   background-color: #fff;
   padding: 20px 30px;
   border-radius: 8px;
+  width: 90%;
   max-width: 800px;
   max-height: 80vh;
   overflow-y: auto;
@@ -113,8 +144,18 @@ SOFTWARE.
 .close-button:hover {
   color: #333;
 }
+.modal-content h2 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+.modal-content h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
 .license-text {
-  white-space: pre-wrap; /* 長い行でも折り返す */
+  white-space: pre-wrap;
   font-family: monospace;
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
