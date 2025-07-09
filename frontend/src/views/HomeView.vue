@@ -14,6 +14,7 @@ const EVALUATION_RANGES = {
 const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
+const draggedIndex = ref(null)
 
 // サイドバーの開閉状態
 const isMobileSidebarOpen = ref(false)
@@ -51,15 +52,6 @@ onBeforeUpdate(() => {
 
 const onDragStart = (index) => {
   draggedIndex.value = index
-}
-const onDrop = (targetIndex) => {
-  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
-    draggedIndex.value = null
-    return
-  }
-  const draggedItem = rows.value.splice(draggedIndex.value, 1)[0]
-  rows.value.splice(targetIndex, 0, draggedItem)
-  draggedIndex.value = null
 }
 
 const saveToFile = () => {
@@ -604,61 +596,68 @@ watch(
             <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">
               &times;
             </button>
-            <section class="gpa-display">
-              <div class="gpa-item">
-                <div class="gpa-label">f-GPA</div>
-                <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
-                <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
-              </div>
-              <div class="gpa-item">
-                <div class="gpa-label">単位数</div>
-                <div class="gpa-main-value">
-                  {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
-                  <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0"
-                    >(+{{ gpaStats.totalInProgressCredits }})</span
-                  >
+            <div class="sidebar-content-wrapper">
+              <section class="gpa-display">
+                <div class="gpa-item">
+                  <div class="gpa-label">f-GPA</div>
+                  <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
+                  <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
                 </div>
-                <div class="gpa-range">
-                  取得率: {{ gpaStats.currentRate }}%
-                  <span v-if="gpaStats.totalInProgressCredits > 0"
-                    >({{ gpaStats.prospectiveRate }}%)</span
-                  >
-                </div>
-              </div>
-            </section>
-            <div class="stats-container">
-              <section class="term-credits-display">
-                <h3>単位数（開講時期別）</h3>
-                <div class="term-grid">
-                  <div
-                    v-for="group in groupedAndSortedCreditsByTerm"
-                    :key="group.year"
-                    class="year-group"
-                  >
-                    <div class="year-header">
-                      <h4>{{ group.year }}年度</h4>
-                      <span class="year-total"
-                        >{{ group.yearStats.earned }} / {{ group.yearStats.attempted }}
-                        <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0"
-                          >(+{{ group.yearStats.inProgress }})</span
-                        >
-                        単位</span
-                      >
-                    </div>
-                    <div v-for="item in group.terms" :key="item.termName" class="term-item">
-                      <span class="term-name">{{ item.termName }}</span>
-                      <span class="term-value"
-                        >{{ item.stats.earned }} / {{ item.stats.attempted }}
-                        <span class="in-progress-credits" v-if="item.stats.inProgress > 0"
-                          >(+{{ item.stats.inProgress }})</span
-                        >
-                        単位</span
-                      >
-                    </div>
+                <div class="gpa-item">
+                  <div class="gpa-label">単位数</div>
+                  <div class="gpa-main-value">
+                    {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
+                    <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0"
+                      >(+{{ gpaStats.totalInProgressCredits }})</span
+                    >
+                  </div>
+                  <div class="gpa-range">
+                    取得率: {{ gpaStats.currentRate }}%
+                    <span v-if="gpaStats.totalInProgressCredits > 0"
+                      >({{ gpaStats.prospectiveRate }}%)</span
+                    >
                   </div>
                 </div>
               </section>
+              <div class="stats-container">
+                <section class="term-credits-display">
+                  <h3>単位数（開講時期別）</h3>
+                  <div class="term-grid">
+                    <div
+                      v-for="group in groupedAndSortedCreditsByTerm"
+                      :key="group.year"
+                      class="year-group"
+                    >
+                      <div class="year-header">
+                        <h4>{{ group.year }}年度</h4>
+                        <span class="year-total"
+                          >{{ group.yearStats.earned }} / {{ group.yearStats.attempted }}
+                          <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0"
+                            >(+{{ group.yearStats.inProgress }})</span
+                          >
+                          単位</span
+                        >
+                      </div>
+                      <div v-for="item in group.terms" :key="item.termName" class="term-item">
+                        <span class="term-name">{{ item.termName }}</span>
+                        <span class="term-value"
+                          >{{ item.stats.earned }} / {{ item.stats.attempted }}
+                          <span class="in-progress-credits" v-if="item.stats.inProgress > 0"
+                            >(+{{ item.stats.inProgress }})</span
+                          >
+                          単位</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
+            <!-- ★ 修正箇所: ファイル操作ボタンをサイドバーの最後に移動 -->
+            <section class="mobile-file-operations">
+              <button @click="saveToFile" class="io-button">ファイルに保存</button>
+              <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
+            </section>
           </aside>
         </div>
         <!-- オーバーレイ -->
@@ -801,8 +800,6 @@ watch(
   flex-direction: column;
   gap: 16px;
 }
-.year-group {
-}
 .year-header {
   display: flex;
   justify-content: space-between;
@@ -913,6 +910,9 @@ watch(
   display: none;
 }
 .mobile-filter-controls {
+  display: none;
+}
+.mobile-file-operations {
   display: none;
 }
 
@@ -1032,11 +1032,9 @@ watch(
     z-index: 1000;
     padding: 20px;
     padding-top: 50px;
-    overflow-y: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 20px;
   }
   .sidebar.mobile-is-open {
     transform: translateX(0);
@@ -1078,6 +1076,30 @@ watch(
     border: 1px solid #ddd;
     border-radius: 8px;
     background-color: #fff;
+  }
+
+  /* ★ 修正箇所: サイドバーのコンテンツラッパー */
+  .sidebar-content-wrapper {
+    flex-grow: 1;
+    overflow-y: auto; /* コンテンツが多すぎる場合にスクロールさせる */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ★ 修正箇所: モバイル用ファイル操作ボタンのスタイルを適用 */
+  .mobile-file-operations {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-top: auto; /* これにより一番下に配置される */
+    padding-top: 20px; /* 上の要素との間にスペースを設ける */
+    border-top: 1px solid #eee; /* 区切り線 */
+  }
+
+  .mobile-file-operations .io-button {
+    flex-grow: 1;
+    padding: 10px;
   }
 }
 </style>
