@@ -1,17 +1,18 @@
 <script setup>
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { RouterView } from 'vue-router'
 
 // モーダルの表示状態を管理するリアクティブ変数
-const isLicenseVisible = ref(false);
+const isLicenseVisible = ref(false)
 </script>
 
 <template>
   <div class="app-wrapper">
     <RouterView />
     <footer class="app-footer">
-      <a href="https://github.com/lunae-f/CampusPal" target="_blank" rel="noopener noreferrer">CampusPal</a>, 
-      made with ❤️‍🔥 by Lunae. | 
+      <a href="https://github.com/lunae-f/CampusPal" target="_blank" rel="noopener noreferrer"
+        >CampusPal</a
+      >, made with ❤️‍🔥 by Lunae. |
       <!-- リンクテキストを変更し、クリックでモーダルを表示 -->
       <a href="#" @click.prevent="isLicenseVisible = true" class="footer-link">Licenses</a>
     </footer>
