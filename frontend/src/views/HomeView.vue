@@ -11,6 +11,9 @@ const rows = ref([]);
 const fileInput = ref(null);
 const rowRefs = ref([]);
 
+// モバイル用サイドバーの開閉状態
+const isMobileSidebarOpen = ref(false);
+
 // フィルタリング用の状態
 const selectedYear = ref('');
 const selectedTerm = ref('');
@@ -77,6 +80,10 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           <input id="crclumcd" v-model="crclumcd" />
         </div>
       </div>
+      <!-- モバイル用サイドバー開閉ボタン -->
+      <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
     </header>
 
     <!-- 2カラムレイアウトのラッパー -->
@@ -149,7 +156,8 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       </main>
 
       <!-- サイドバー（右カラム） -->
-      <aside class="sidebar">
+      <aside class="sidebar" :class="{ 'mobile-is-open': isMobileSidebarOpen }">
+        <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">&times;</button>
         <section class="gpa-display">
           <div class="gpa-item">
             <div class="gpa-label">f-GPA</div>
@@ -195,8 +203,9 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
           </section>
         </div>
       </aside>
-
     </div>
+    <!-- オーバーレイ -->
+    <div v-if="isMobileSidebarOpen" @click="isMobileSidebarOpen = false" class="sidebar-overlay"></div>
   </div>
 </template>
 
@@ -265,11 +274,15 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .drag-wrapper { border-bottom: 1px solid #eee; }
 .draggable-ghost { opacity: 0.5; background: #cce5ff; }
 
+/* --- Mobile Sidebar Styles --- */
+.mobile-sidebar-toggle { display: none; }
+.mobile-sidebar-close { display: none; }
+
 /* --- 2カラムレイアウト用のスタイル --- */
-@media (min-width: 1024px) { /* より広い画面で適用 */
+@media (min-width: 1024px) {
   .layout-wrapper {
     display: grid;
-    grid-template-columns: 3.3027756377fr 1fr; /* 青銅比 (約3.3:1) に変更 */
+    grid-template-columns: 3.3027756377fr 1fr;
     gap: 24px;
   }
   .sidebar {
@@ -277,7 +290,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     top: 20px;
     align-self: start;
   }
-  /* PC表示では統計情報を縦に並べる */
   .stats-container {
     grid-template-columns: 1fr;
   }
@@ -287,9 +299,68 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 /* --- Mobile View --- */
 @media (max-width: 1023px) {
   .container { padding: 10px; }
-  .header { flex-direction: column; align-items: stretch; }
-  .header-controls { flex-direction: column; align-items: stretch; gap: 10px; }
-  .stats-container { grid-template-columns: 1fr; } /* スマホ・タブレットでは1カラム */
+  .header {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 1.2em;
+  }
+  .header-controls {
+    display: none; /* スマホではヘッダー内のコントロールを非表示 */
+  }
+  .mobile-sidebar-toggle {
+    display: block;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+  }
+  .layout-wrapper {
+    display: block;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 85%;
+    max-width: 320px;
+    height: 100vh;
+    background-color: #ffffff;
+    box-shadow: -3px 0 15px rgba(0,0,0,0.2);
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+    padding: 20px;
+    padding-top: 50px; /* クローズボタンのためのスペース */
+    overflow-y: auto;
+  }
+  .sidebar.mobile-is-open {
+    transform: translateX(0);
+  }
+  .mobile-sidebar-close {
+    display: block;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 2.5em;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #888;
+  }
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 999;
+    transition: opacity 0.3s ease-in-out;
+  }
+  .stats-container { grid-template-columns: 1fr; }
   .table-header { display: none; }
   .syllabus-table { display: flex; flex-direction: column; gap: 10px; }
   .drag-wrapper {
@@ -297,7 +368,6 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
     border-radius: 8px;
     background-color: #fff;
   }
-
   .filter-controls {
     flex-direction: column;
     align-items: stretch;
