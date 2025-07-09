@@ -36,7 +36,7 @@ const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.ko
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0, totalInProgressCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; if (row.evaluation) { totalAttemptedCredits += credits; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; } else { totalInProgressCredits += credits; } } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const currentRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; const prospectiveTotalAttempted = totalAttemptedCredits + totalInProgressCredits; const prospectiveTotalEarned = totalEarnedCredits + totalInProgressCredits; const prospectiveRate = prospectiveTotalAttempted > 0 ? (prospectiveTotalEarned / prospectiveTotalAttempted * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, totalInProgressCredits, currentRate: currentRate.toFixed(1), prospectiveRate: prospectiveRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation && row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
 
-const creditsByTerm = computed(() => {
+const groupedAndSortedCreditsByTerm = computed(() => {
   const termTotals = {};
   for (const row of finalRowsForCalc.value) {
     if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) {
@@ -55,34 +55,34 @@ const creditsByTerm = computed(() => {
       }
     }
   }
-  return termTotals;
-});
 
-const groupedAndSortedCreditsByTerm = computed(() => {
   const grouped = {};
   const termOrder = [ '通年', '前期', '前期前半', '前期後半', '後期', '後期後半', '通年（卒研）', '集中（前期）', '集中（後期）', '集中（通年）', '通年（事例）', '通年（大学院）' ];
   const getOrderIndex = (termName) => { const index = termOrder.indexOf(termName); return index === -1 ? Infinity : index; };
 
-  for (const fullTermKey in creditsByTerm.value) {
+  for (const fullTermKey in termTotals) {
     const parts = fullTermKey.split('年度 ');
     const year = parts[0];
     const termName = parts[1];
     if (!grouped[year]) {
-      grouped[year] = [];
+      grouped[year] = { terms: [], yearStats: { earned: 0, attempted: 0, inProgress: 0 } };
     }
-    grouped[year].push({ termName: termName, stats: creditsByTerm.value[fullTermKey] });
+    const termStat = termTotals[fullTermKey];
+    grouped[year].terms.push({ termName: termName, stats: termStat });
+    grouped[year].yearStats.earned += termStat.earned;
+    grouped[year].yearStats.attempted += termStat.attempted;
+    grouped[year].yearStats.inProgress += termStat.inProgress;
   }
 
   for (const year in grouped) {
-    grouped[year].sort((a, b) => getOrderIndex(a.termName) - getOrderIndex(b.termName));
+    grouped[year].terms.sort((a, b) => getOrderIndex(a.termName) - getOrderIndex(b.termName));
   }
 
-  const sortedYears = Object.keys(grouped).sort((a, b) => b - a);
-  const result = {};
-  for (const year of sortedYears) {
-    result[year] = grouped[year];
-  }
-  return result;
+  // 年度を昇順（若い順）にソート
+  return Object.keys(grouped).sort((a, b) => a - b).map(year => ({
+    year: year,
+    ...grouped[year]
+  }));
 });
 
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
@@ -140,9 +140,12 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       <section class="term-credits-display">
         <h3>単位数（開講時期別）</h3>
         <div class="term-grid">
-          <div v-for="(terms, year) in groupedAndSortedCreditsByTerm" :key="year" class="year-group">
-            <h4 class="year-header">{{ year }}年度</h4>
-            <div v-for="item in terms" :key="item.termName" class="term-item">
+          <div v-for="group in groupedAndSortedCreditsByTerm" :key="group.year" class="year-group">
+            <div class="year-header">
+              <h4>{{ group.year }}年度</h4>
+              <span class="year-total">{{ group.yearStats.earned }} / {{ group.yearStats.attempted }} <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0">(+{{ group.yearStats.inProgress }})</span> 単位</span>
+            </div>
+            <div v-for="item in group.terms" :key="item.termName" class="term-item">
               <span class="term-name">{{ item.termName }}</span>
               <span class="term-value">{{ item.stats.earned }} / {{ item.stats.attempted }} <span class="in-progress-credits" v-if="item.stats.inProgress > 0">(+{{ item.stats.inProgress }})</span> 単位</span>
             </div>
@@ -214,8 +217,10 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .category-item { display: flex; justify-content: space-between; }
 .category-value { font-weight: bold; }
 .term-grid { display: flex; flex-direction: column; gap: 16px; }
-.year-group { }
-.year-header { font-size: 1em; font-weight: bold; margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #e0e0e0; }
+.year-group {}
+.year-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 1em; font-weight: bold; margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #e0e0e0; }
+.year-header h4 { margin: 0; }
+.year-total { font-size: 0.9em; font-weight: normal; color: #555; }
 .term-item { display: flex; justify-content: space-between; padding-left: 10px; padding-bottom: 4px; font-size: 0.9em; }
 .term-value { font-weight: bold; }
 .table-header { display: grid; grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px; gap: 12px; font-weight: bold; border-bottom: 2px solid #333; padding: 0 4px 8px 4px; color: #555; font-size: 0.8em; }
