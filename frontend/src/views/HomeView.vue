@@ -11,6 +11,26 @@ const rows = ref([]);
 const fileInput = ref(null);
 const rowRefs = ref([]);
 
+// --- ここから修正 ---
+// フィルタリング用の状態
+const selectedYear = ref('');
+const selectedTerm = ref('');
+const selectedCategory = ref('');
+
+// フィルタリングの選択肢を動的に生成
+const availableYears = computed(() => [...new Set(rows.value.map(row => row.rishunen).filter(Boolean))].sort((a, b) => b - a));
+const availableTerms = computed(() => [...new Set(rows.value.map(row => row.syllabusData?.term).filter(Boolean))].sort());
+const availableCategories = computed(() => [...new Set(rows.value.map(row => row.syllabusData?.category?.split('・')[0]).filter(Boolean))].sort());
+
+// 行が表示されるべきかどうかを判断する関数
+const shouldShowRow = (row) => {
+  const yearMatch = !selectedYear.value || row.rishunen === selectedYear.value;
+  const termMatch = !selectedTerm.value || row.syllabusData?.term === selectedTerm.value;
+  const categoryMatch = !selectedCategory.value || row.syllabusData?.category?.startsWith(selectedCategory.value);
+  return yearMatch && termMatch && categoryMatch;
+};
+// --- ここまで修正 ---
+
 onBeforeUpdate(() => {
   rowRefs.value = [];
 });
@@ -35,56 +55,7 @@ const rowMetadata = computed(() => { const metadata = {}; const kougicdCounts = 
 const finalRowsForCalc = computed(() => { return rows.value.filter(row => row.kougicd && row.syllabusData?.course_name && !rowMetadata.value[row.id]?.isOlderAttempt);});
 const gpaStats = computed(() => { let totalMinGpProduct = 0, totalMaxGpProduct = 0, totalAttemptedCredits = 0, totalEarnedCredits = 0, totalInProgressCredits = 0; for (const row of finalRowsForCalc.value) { const credits = Number(row.syllabusData?.credits); if (!credits) continue; if (row.evaluation) { totalAttemptedCredits += credits; let minGp = 0, maxGp = 0; if (row.evaluation !== '不可') { const range = EVALUATION_RANGES[row.evaluation]; if (range) { minGp = (range.minScore - 50) / 10; maxGp = (range.maxScore - 50) / 10; } totalEarnedCredits += credits; } totalMinGpProduct += minGp * credits; totalMaxGpProduct += maxGp * credits; } else { totalInProgressCredits += credits; } } const minGpa = totalAttemptedCredits > 0 ? (totalMinGpProduct / totalAttemptedCredits) : 0; const maxGpa = totalAttemptedCredits > 0 ? (totalMaxGpProduct / totalAttemptedCredits) : 0; const avgGpa = (minGpa + maxGpa) / 2; const currentRate = totalAttemptedCredits > 0 ? (totalEarnedCredits / totalAttemptedCredits * 100) : 0; const prospectiveTotalAttempted = totalAttemptedCredits + totalInProgressCredits; const prospectiveTotalEarned = totalEarnedCredits + totalInProgressCredits; const prospectiveRate = prospectiveTotalAttempted > 0 ? (prospectiveTotalEarned / prospectiveTotalAttempted * 100) : 0; return { totalAttemptedCredits, totalEarnedCredits, totalInProgressCredits, currentRate: currentRate.toFixed(1), prospectiveRate: prospectiveRate.toFixed(1), minGpa: minGpa.toFixed(3), maxGpa: maxGpa.toFixed(3), avgGpa: avgGpa.toFixed(3) }; });
 const creditsByCategory = computed(() => { const categoryTotals = {}; for (const row of finalRowsForCalc.value) { if (row.evaluation && row.evaluation !== '不可' && row.syllabusData?.category && row.syllabusData?.credits) { const fullCategory = row.syllabusData.category; const categoryKey = fullCategory.split('・')[0]; const credits = Number(row.syllabusData.credits); categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + credits; } } return categoryTotals; });
-
-const groupedAndSortedCreditsByTerm = computed(() => {
-  const termTotals = {};
-  for (const row of finalRowsForCalc.value) {
-    if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) {
-      const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`;
-      if (!termTotals[termKey]) {
-        termTotals[termKey] = { earned: 0, attempted: 0, inProgress: 0 };
-      }
-      const credits = Number(row.syllabusData.credits);
-      if(row.evaluation) {
-        termTotals[termKey].attempted += credits;
-        if (row.evaluation !== '不可') {
-          termTotals[termKey].earned += credits;
-        }
-      } else {
-        termTotals[termKey].inProgress += credits;
-      }
-    }
-  }
-
-  const grouped = {};
-  const termOrder = [ '通年', '前期', '前期前半', '前期後半', '後期', '後期後半', '通年（卒研）', '集中（前期）', '集中（後期）', '集中（通年）', '通年（事例）', '通年（大学院）' ];
-  const getOrderIndex = (termName) => { const index = termOrder.indexOf(termName); return index === -1 ? Infinity : index; };
-
-  for (const fullTermKey in termTotals) {
-    const parts = fullTermKey.split('年度 ');
-    const year = parts[0];
-    const termName = parts[1];
-    if (!grouped[year]) {
-      grouped[year] = { terms: [], yearStats: { earned: 0, attempted: 0, inProgress: 0 } };
-    }
-    const termStat = termTotals[fullTermKey];
-    grouped[year].terms.push({ termName: termName, stats: termStat });
-    grouped[year].yearStats.earned += termStat.earned;
-    grouped[year].yearStats.attempted += termStat.attempted;
-    grouped[year].yearStats.inProgress += termStat.inProgress;
-  }
-
-  for (const year in grouped) {
-    grouped[year].terms.sort((a, b) => getOrderIndex(a.termName) - getOrderIndex(b.termName));
-  }
-
-  // 年度を昇順（若い順）にソート
-  return Object.keys(grouped).sort((a, b) => a - b).map(year => ({
-    year: year,
-    ...grouped[year]
-  }));
-});
-
+const groupedAndSortedCreditsByTerm = computed(() => { const termTotals = {}; for (const row of finalRowsForCalc.value) { if (row.rishunen && row.syllabusData?.term && row.syllabusData?.credits) { const termKey = `${row.rishunen}年度 ${row.syllabusData.term}`; if (!termTotals[termKey]) { termTotals[termKey] = { earned: 0, attempted: 0, inProgress: 0 }; } const credits = Number(row.syllabusData.credits); if(row.evaluation) { termTotals[termKey].attempted += credits; if (row.evaluation !== '不可') { termTotals[termKey].earned += credits; } } else { termTotals[termKey].inProgress += credits; } } } const grouped = {}; const termOrder = [ '通年', '前期', '前期前半', '前期後半', '後期', '後期後半', '通年（卒研）', '集中（前期）', '集中（後期）', '集中（通年）', '通年（事例）', '通年（大学院）' ]; const getOrderIndex = (termName) => { const index = termOrder.indexOf(termName); return index === -1 ? Infinity : index; }; for (const fullTermKey in termTotals) { const parts = fullTermKey.split('年度 '); const year = parts[0]; const termName = parts[1]; if (!grouped[year]) { grouped[year] = { terms: [], yearStats: { earned: 0, attempted: 0, inProgress: 0 } }; } const termStat = termTotals[fullTermKey]; grouped[year].terms.push({ termName: termName, stats: termStat }); grouped[year].yearStats.earned += termStat.earned; grouped[year].yearStats.attempted += termStat.attempted; grouped[year].yearStats.inProgress += termStat.inProgress; } for (const year in grouped) { grouped[year].terms.sort((a, b) => getOrderIndex(a.termName) - getOrderIndex(b.termName)); } return Object.keys(grouped).sort((a, b) => a - b).map(year => ({ year: year, ...grouped[year] })); });
 const handleFetch = async (row) => { row.isLoading = true; row.error = null; try { const data = await fetchSyllabus({ kougicd: row.kougicd, rishunen: row.rishunen, crclumcd: crclumcd.value }); row.syllabusData = data; } catch (e) { row.error = e.message; row.syllabusData = null; } finally { row.isLoading = false; } };
 const fetchSyllabusDataForRows = async (rowsToFetch) => { for (const row of rowsToFetch) { if (row.kougicd && row.rishunen) { await handleFetch(row); } } };
 const addNewRow = () => { const lastRow = rows.value.length > 0 ? rows.value[rows.value.length - 1] : null; const newYear = lastRow ? lastRow.rishunen : '2024'; rows.value.push({ id: rows.value.length, rishunen: newYear, kougicd: '', evaluation: '', syllabusData: null, isLoading: false, error: null }); };
@@ -153,6 +124,32 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
         </div>
       </section>
     </div>
+
+    <!-- フィルタリングUIを追加 -->
+    <section class="filter-controls">
+      <div class="filter-group">
+        <label for="filter-year">年度</label>
+        <select id="filter-year" v-model="selectedYear">
+          <option value="">すべて</option>
+          <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-term">開講時期</label>
+        <select id="filter-term" v-model="selectedTerm">
+          <option value="">すべて</option>
+          <option v-for="term in availableTerms" :key="term" :value="term">{{ term }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-category">分野系列</label>
+        <select id="filter-category" v-model="selectedCategory">
+          <option value="">すべて</option>
+          <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
+      </div>
+    </section>
+
     <div class="table-header">
       <div class="col-handle"></div>
       <div class="col-index">#</div>
@@ -173,7 +170,7 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
       animation="150"
       ghostClass="draggable-ghost"
     >
-      <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper">
+      <div v-for="(row, index) in rows" :key="row.id" class="drag-wrapper" v-show="shouldShowRow(row)">
         <SyllabusRow
           :row-index="index"
           v-model:rishunen="row.rishunen"
@@ -223,6 +220,28 @@ watch(rows, (newRows) => { const simplifiedRows = newRows.filter(row => row.koug
 .year-total { font-size: 0.9em; font-weight: normal; color: #555; }
 .term-item { display: flex; justify-content: space-between; padding-left: 10px; padding-bottom: 4px; font-size: 0.9em; }
 .term-value { font-weight: bold; }
+.filter-controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-group label {
+  font-size: 0.9em;
+  font-weight: bold;
+}
+.filter-group select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
 .table-header { display: grid; grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px; gap: 12px; font-weight: bold; border-bottom: 2px solid #333; padding: 0 4px 8px 4px; color: #555; font-size: 0.8em; }
 .table-header > div { text-align: center; }
 .table-header .col-info, .table-header .col-category, .table-header .col-instructors { text-align: left; }
