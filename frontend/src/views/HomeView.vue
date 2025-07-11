@@ -18,13 +18,19 @@ const rowRefs = ref([])
 
 // サイドバーの開閉状態
 const isMobileSidebarOpen = ref(false)
-const isFilterSidebarOpen = ref(true) // PC用フィルターサイドバー
+const isFilterSidebarOpen = ref(true)
+const isPasteModalOpen = ref(false)
+const pastedText = ref('')
+const pasteYear = ref('')
 
-// フィルタリング用の状態（複数選択対応のため配列に変更）
+// フィルタリング用の状態
 const selectedYears = ref([])
 const selectedTerms = ref([])
-const selectedCategories = ref([])
-const selectedEvaluations = ref([]) // 評価フィルター用の状態を追加
+const selectedEvaluations = ref([])
+
+// 並べ替え用の状態
+const sortKey = ref('')
+const sortOrder = ref('asc')
 
 // フィルタリングの選択肢を動的に生成
 const availableYears = computed(() =>
@@ -33,30 +39,65 @@ const availableYears = computed(() =>
 const availableTerms = computed(() =>
   [...new Set(rows.value.map((row) => row.syllabusData?.term).filter(Boolean))].sort(),
 )
-const availableCategories = computed(() =>
-  [
-    ...new Set(rows.value.map((row) => row.syllabusData?.category?.split('・')[0]).filter(Boolean)),
-  ].sort(),
-)
-const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価'] // 評価の選択肢
+const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価']
 
-// 行が表示されるべきかどうかを判断する関数（評価のロジックを追加）
+// 行が表示されるべきかどうかを判断する関数
 const shouldShowRow = (row) => {
   const yearMatch =
     selectedYears.value.length === 0 || (row.rishunen && selectedYears.value.includes(row.rishunen))
   const termMatch =
     selectedTerms.value.length === 0 ||
     (row.syllabusData?.term && selectedTerms.value.includes(row.syllabusData.term))
-  const categoryMatch =
-    selectedCategories.value.length === 0 ||
-    (row.syllabusData?.category &&
-      selectedCategories.value.includes(row.syllabusData.category.split('・')[0]))
   const evalMatch =
     selectedEvaluations.value.length === 0 ||
     (row.evaluation && selectedEvaluations.value.includes(row.evaluation)) ||
     (!row.evaluation && selectedEvaluations.value.includes('未評価'))
 
-  return yearMatch && termMatch && categoryMatch && evalMatch
+  return yearMatch && termMatch && evalMatch
+}
+
+// 並べ替え関数
+const sortBy = (key) => {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+
+  const getTermRank = (term) => {
+    const order = { 前期前半: 1, 前期: 2, 前期後半: 3, 後期前半: 4, 後期: 5, 後期後半: 6, 通年: 7 }
+    return order[term] || 99
+  }
+
+  rows.value.sort((a, b) => {
+    let comparison = 0
+
+    if (key === 'term') {
+      const yearA = parseInt(a.rishunen, 10) || 0
+      const yearB = parseInt(b.rishunen, 10) || 0
+
+      if (yearA !== yearB) {
+        comparison = yearA < yearB ? -1 : 1
+      } else {
+        const termA = getTermRank(a.syllabusData?.term)
+        const termB = getTermRank(b.syllabusData?.term)
+        comparison = termA < termB ? -1 : termA > termB ? 1 : 0
+      }
+    } else if (key === 'course_name') {
+      const valA = a.syllabusData?.course_name || ''
+      const valB = b.syllabusData?.course_name || ''
+      comparison = valA.localeCompare(valB, 'ja')
+    } else if (key === 'instructors') {
+      const valA = (a.syllabusData?.instructors || []).join('')
+      const valB = (b.syllabusData?.instructors || []).join('')
+      comparison = valA.localeCompare(valB, 'ja')
+    } else {
+      return 0
+    }
+
+    return sortOrder.value === 'asc' ? comparison : -comparison
+  })
 }
 
 // 評価別の単位数を計算
@@ -70,16 +111,61 @@ const creditsByEvaluation = computed(() => {
       }
     }
   }
-  const maxCredits = Math.max(...Object.values(evalTotals), 1) // 0除算を避ける
-
+  const maxCredits = Math.max(...Object.values(evalTotals), 1)
   const chartData = Object.entries(evalTotals).map(([grade, credits]) => ({
     grade,
     credits,
     percentage: (credits / maxCredits) * 100,
   }))
-
   return { chartData }
 })
+
+// テキストから講義コードを抽出して行を追加する関数
+const extractAndLoadCodes = () => {
+  if (!pasteYear.value) {
+    alert('履修年度を入力してください。')
+    return
+  }
+  if (!pastedText.value) return
+
+  const regex = /[a-z]{3}\d{6}/gi
+  const matches = pastedText.value.match(regex)
+
+  if (!matches || matches.length === 0) {
+    alert('有効な講義コードが見つかりませんでした。')
+    return
+  }
+
+  const existingCodes = new Set(rows.value.map((row) => row.kougicd).filter(Boolean))
+  const uniqueCodes = [...new Set(matches)]
+  const codesToAdd = uniqueCodes.filter((code) => !existingCodes.has(code.toLowerCase()))
+
+  if (codesToAdd.length === 0) {
+    alert('貼り付けられたテキストに、新しい講義コードが見つかりませんでした。')
+    isPasteModalOpen.value = false
+    pastedText.value = ''
+    pasteYear.value = ''
+    return
+  }
+
+  const maxId = rows.value.length > 0 ? Math.max(...rows.value.map((r) => r.id)) : -1
+  const newRows = codesToAdd.map((code, index) => ({
+    id: maxId + 1 + index,
+    rishunen: pasteYear.value,
+    kougicd: code.toLowerCase(),
+    evaluation: '',
+    syllabusData: null,
+    isLoading: false,
+    error: null,
+  }))
+
+  rows.value.push(...newRows)
+  fetchSyllabusDataForRows(newRows)
+
+  isPasteModalOpen.value = false
+  pastedText.value = ''
+  pasteYear.value = ''
+}
 
 onBeforeUpdate(() => {
   rowRefs.value = []
@@ -153,8 +239,21 @@ const handleFileLoad = (event) => {
       }
       if (loadedData && Array.isArray(loadedData.rows)) {
         crclumcd.value = loadedData.crclumcd || crclumcd.value
-        const newRows = loadedData.rows.map((simpleRow, index) => ({
-          id: index,
+
+        const existingCodes = new Set(rows.value.map((row) => row.kougicd).filter(Boolean))
+        const rowsToAdd = loadedData.rows.filter(
+          (simpleRow) => simpleRow.kougicd && !existingCodes.has(simpleRow.kougicd.toLowerCase()),
+        )
+
+        if (rowsToAdd.length === 0) {
+          alert('ファイルに、新しい講義コードが見つかりませんでした。')
+          event.target.value = ''
+          return
+        }
+
+        const maxId = rows.value.length > 0 ? Math.max(...rows.value.map((r) => r.id)) : -1
+        const newRows = rowsToAdd.map((simpleRow, index) => ({
+          id: maxId + 1 + index,
           rishunen: simpleRow.rishunen,
           kougicd: simpleRow.kougicd,
           evaluation: simpleRow.evaluation,
@@ -162,9 +261,10 @@ const handleFileLoad = (event) => {
           isLoading: false,
           error: null,
         }))
-        rows.value = newRows
-        fetchSyllabusDataForRows(rows.value)
-        alert('データを読み込みました。')
+
+        rows.value.push(...newRows)
+        fetchSyllabusDataForRows(newRows)
+        alert(`${newRows.length}件の新しい講義データを追加しました。`)
       } else {
         throw new Error('ファイルの形式が正しくありません。')
       }
@@ -176,6 +276,7 @@ const handleFileLoad = (event) => {
   reader.readAsText(file)
   event.target.value = ''
 }
+
 const rowMetadata = computed(() => {
   const metadata = {}
   const kougicdCounts = {}
@@ -463,6 +564,7 @@ watch(
               accept=".json,.csv"
               style="display: none"
             />
+            <button @click="isPasteModalOpen = true" class="io-button">時間割を貼付</button>
           </div>
           <div class="global-input" title="s+学籍番号上5桁">
             <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
@@ -510,20 +612,6 @@ watch(
               <div v-for="term in availableTerms" :key="term" class="checkbox-item">
                 <input type="checkbox" :id="`term-${term}`" :value="term" v-model="selectedTerms" />
                 <label :for="`term-${term}`">{{ term }}</label>
-              </div>
-            </div>
-          </div>
-          <div class="filter-group">
-            <label>分野系列</label>
-            <div class="checkbox-group">
-              <div v-for="cat in availableCategories" :key="cat" class="checkbox-item">
-                <input
-                  type="checkbox"
-                  :id="`cat-${cat}`"
-                  :value="cat"
-                  v-model="selectedCategories"
-                />
-                <label :for="`cat-${cat}`">{{ cat }}</label>
               </div>
             </div>
           </div>
@@ -590,24 +678,6 @@ watch(
                       </div>
                     </div>
                   </div>
-                  <div class="filter-group">
-                    <label>分野系列</label>
-                    <div class="checkbox-group">
-                      <div
-                        v-for="cat in availableCategories"
-                        :key="`mobile-cat-${cat}`"
-                        class="checkbox-item"
-                      >
-                        <input
-                          type="checkbox"
-                          :id="`mobile-cat-${cat}`"
-                          :value="cat"
-                          v-model="selectedCategories"
-                        />
-                        <label :for="`mobile-cat-${cat}`">{{ cat }}</label>
-                      </div>
-                    </div>
-                  </div>
                   <div class="filter-group filter-group-evaluation">
                     <label>評価</label>
                     <div class="checkbox-group">
@@ -635,10 +705,17 @@ watch(
               <div class="col-index">#</div>
               <div class="col-year">年度</div>
               <div class="col-code">講義コード</div>
-              <div class="col-term">学期</div>
-              <div class="col-category">分野系列</div>
-              <div class="col-info">講義名</div>
-              <div class="col-instructors">担当者</div>
+              <div @click="sortBy('term')" class="sortable-header">
+                学期 <span v-if="sortKey === 'term'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+              </div>
+              <div @click="sortBy('course_name')" class="sortable-header col-info">
+                講義名
+                <span v-if="sortKey === 'course_name'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+              </div>
+              <div @click="sortBy('instructors')" class="sortable-header">
+                担当者
+                <span v-if="sortKey === 'instructors'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+              </div>
               <div class="col-credits">単位数</div>
               <div class="col-eval">評価</div>
             </div>
@@ -763,6 +840,23 @@ watch(
           @click="isMobileSidebarOpen = false"
           class="sidebar-overlay"
         ></div>
+      </div>
+    </div>
+
+    <!-- Paste Modal -->
+    <div v-if="isPasteModalOpen" class="modal-overlay" @click.self="isPasteModalOpen = false">
+      <div class="modal-content">
+        <h3>時間割のテキストを貼り付け</h3>
+        <p>Webclassの時間割表をコピーして、下のボックスに貼り付けてください。</p>
+        <div class="modal-input-group">
+          <label for="paste-year">履修年度:</label>
+          <input id="paste-year" type="text" v-model="pasteYear" placeholder="例: 2025" />
+        </div>
+        <textarea v-model="pastedText" placeholder="ここに貼り付け..."></textarea>
+        <div class="modal-actions">
+          <button @click="isPasteModalOpen = false" class="io-button">キャンセル</button>
+          <button @click="extractAndLoadCodes" class="io-button primary">講義コードを抽出</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1058,7 +1152,7 @@ watch(
 
 .table-header {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;
@@ -1069,9 +1163,13 @@ watch(
 .table-header > div {
   text-align: center;
 }
-.table-header .col-info,
-.table-header .col-category,
-.table-header .col-instructors {
+.table-header .sortable-header {
+  cursor: pointer;
+}
+.table-header .sortable-header:hover {
+  color: #000;
+}
+.table-header .col-info {
   text-align: left;
 }
 .drag-wrapper {
@@ -1094,6 +1192,67 @@ watch(
 }
 .mobile-filter-controls {
   display: none;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+.modal-content {
+  background-color: white;
+  padding: 24px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+.modal-content h3 {
+  margin-top: 0;
+}
+.modal-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.modal-input-group label {
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.modal-input-group input {
+  width: 100px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.modal-content textarea {
+  width: 100%;
+  height: 200px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: monospace;
+}
+.modal-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.io-button.primary {
+  background-color: #00754a;
+  color: white;
+  border-color: #00754a;
 }
 
 /* --- 2カラムレイアウト用のスタイル --- */
@@ -1299,21 +1458,14 @@ watch(
   :deep(.col-info) {
     grid-area: 2 / 1 / 2 / 13;
   }
-  :deep(.col-category) {
-    grid-area: 3 / 1 / 3 / 8;
-  }
   :deep(.col-instructors) {
-    grid-area: 3 / 8 / 3 / 13;
+    grid-area: 3 / 1 / 3 / 13;
   }
   :deep(.col-eval) {
-    grid-area: 4 / 1 / 4 / 8;
+    grid-area: 4 / 1 / 4 / 7;
   }
   :deep(.col-credits) {
-    grid-area: 4 / 8 / 4 / 13;
-    text-align: right;
-  }
-  :deep(.col-gpa) {
-    grid-area: 5 / 1 / 5 / 8;
+    grid-area: 4 / 7 / 5 / 13;
   }
 
   :deep(.col-category),
