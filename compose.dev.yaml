@@ -25,4 +25,4 @@ services:
       - /app/node_modules
   redis:
     image: redis:alpine
-    restart: always
+    restart: unless-stopped
