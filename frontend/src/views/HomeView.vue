@@ -67,17 +67,17 @@ const sortBy = (key) => {
 
   const getTermRank = (term) => {
     const order = {
-      '通年': 1,
+      通年: 1,
       '通年（事例）': 2,
       '通年（卒研）': 3,
       '通年（大学院）': 4,
       '集中（通年）': 5,
-      '前期': 6,
-      '前期前半': 7,
-      '前期後半': 8,
+      前期: 6,
+      前期前半: 7,
+      前期後半: 8,
       '集中（前期）': 9,
-      '後期': 10,
-      '後期後半': 11,
+      後期: 10,
+      後期後半: 11,
       '集中（後期）': 12,
     }
     return order[term] || 99
@@ -544,7 +544,6 @@ watch(
 
 <template>
   <div>
-    <!-- 新しいルート要素 -->
     <header class="header">
       <div class="header-inner">
         <div class="header-left">
@@ -575,7 +574,7 @@ watch(
               ref="fileInput"
               @change="handleFileLoad"
               accept=".json,.csv"
-              style="display: none"
+              class="visually-hidden-file-input"
             />
             <button @click="isPasteModalOpen = true" class="io-button">時間割を貼付</button>
           </div>
@@ -584,7 +583,6 @@ watch(
             <input id="crclumcd" v-model="crclumcd" />
           </div>
         </div>
-        <!-- モバイル用サイドバー開閉ボタン -->
         <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -606,7 +604,6 @@ watch(
     </header>
 
     <div class="page-content">
-      <!-- PC用フィルターサイドバー -->
       <aside class="filter-sidebar" :class="{ 'is-closed': !isFilterSidebarOpen }">
         <section class="filter-controls">
           <h3>絞り込み</h3>
@@ -646,11 +643,8 @@ watch(
       </aside>
 
       <div class="container">
-        <!-- 2カラムレイアウトのラッパー -->
         <div class="layout-wrapper">
-          <!-- メインコンテンツ（左カラム） -->
           <main class="main-content">
-            <!-- モバイル用フィルターUI -->
             <section class="mobile-filter-controls">
               <details class="filter-details">
                 <summary>絞り込み</summary>
@@ -765,11 +759,15 @@ watch(
             </VueDraggable>
           </main>
 
-          <!-- サイドバー（右カラム） -->
           <aside class="sidebar" :class="{ 'mobile-is-open': isMobileSidebarOpen }">
             <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">
               &times;
             </button>
+            <div class="mobile-sidebar-actions">
+              <button @click="saveToFile" class="io-button">ファイルに保存</button>
+              <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
+              <button @click="isPasteModalOpen = true" class="io-button">時間割を貼付</button>
+            </div>
             <section class="gpa-display">
               <div class="gpa-item">
                 <div class="gpa-label">f-GPA</div>
@@ -847,7 +845,6 @@ watch(
             </div>
           </aside>
         </div>
-        <!-- オーバーレイ -->
         <div
           v-if="isMobileSidebarOpen"
           @click="isMobileSidebarOpen = false"
@@ -856,7 +853,6 @@ watch(
       </div>
     </div>
 
-    <!-- Paste Modal -->
     <div v-if="isPasteModalOpen" class="modal-overlay" @click.self="isPasteModalOpen = false">
       <div class="modal-content">
         <h3>時間割のテキストを貼り付け</h3>
@@ -1207,6 +1203,26 @@ watch(
   display: none;
 }
 
+/* --- ▼▼▼ 変更点3: input[type=file]を視覚的に隠すためのCSSを追加 ▼▼▼ --- */
+.visually-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* --- ▲▲▲ 変更点3 ▲▲▲ --- */
+
+/* --- ▼▼▼ 変更点4: モバイルサイドバーのボタンスタイル（デフォルト非表示）を追加 ▼▼▼ --- */
+.mobile-sidebar-actions {
+  display: none;
+}
+/* --- ▲▲▲ 変更点4 ▲▲▲ --- */
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -1370,6 +1386,21 @@ watch(
   .layout-wrapper {
     display: block;
   }
+  /* --- ▼▼▼ 変更点5: モバイルサイドバーのボタンスタイル（表示設定）を追加 ▼▼▼ --- */
+  .mobile-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 20px;
+  }
+  .mobile-sidebar-actions .io-button {
+    width: 100%;
+    padding: 10px;
+    font-size: 1em;
+    text-align: center;
+  }
+  /* --- ▲▲▲ 変更点5 ▲▲▲ --- */
   .sidebar {
     position: fixed;
     top: 0;
