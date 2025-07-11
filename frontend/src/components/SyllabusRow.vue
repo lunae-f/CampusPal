@@ -19,6 +19,7 @@ const emit = defineEmits([
   'fetch-request',
   'clear-row',
   'drag-start',
+  'delete-row',
 ])
 
 const debounceTimer = ref(null)
@@ -152,6 +153,25 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
         <option value="不可">不可</option>
       </select>
     </div>
+    <div class="col-actions">
+      <button @click="$emit('delete-row')" class="delete-button" title="行を削除">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <path
+            d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"
+          />
+          <path
+            fill-rule="evenodd"
+            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -159,7 +179,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 /* デスクトップ用のスタイル */
 .syllabus-row {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px 30px; /* 削除ボタン用の列を追加 */
   gap: 12px;
   align-items: center;
   padding: 8px 4px;
@@ -169,6 +189,25 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     background-color 0.3s,
     opacity 0.3s;
 }
+.col-actions {
+  text-align: center;
+}
+.delete-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.delete-button:hover {
+  color: #d92c2c;
+  background-color: #fbe9e7;
+}
+
 .col-index {
   text-align: center;
   color: #6c757d;
@@ -317,8 +356,12 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     grid-area: 1 / 3 / 2 / 7;
   }
   .col-code {
-    grid-area: 1 / 7 / 2 / 13;
+    grid-area: 1 / 7 / 2 / 12; /* 削除ボタン用に調整 */
   }
+  .col-actions {
+    grid-area: 1 / 12 / 2 / 13;
+  }
+
   .col-term {
     display: none;
   }

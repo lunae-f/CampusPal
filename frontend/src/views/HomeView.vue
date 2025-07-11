@@ -484,6 +484,9 @@ const clearRowData = (rowToClear) => {
   rowToClear.isLoading = false
   rowToClear.error = null
 }
+const deleteRow = (rowIndex) => {
+  rows.value.splice(rowIndex, 1)
+}
 onMounted(() => {
   const savedDataString = localStorage.getItem(STORAGE_KEY)
   if (savedDataString) {
@@ -725,6 +728,7 @@ watch(
               </div>
               <div class="col-credits">単位数</div>
               <div class="col-eval">評価</div>
+              <div class="col-actions"></div>
             </div>
             <VueDraggable
               v-model="rows"
@@ -754,6 +758,7 @@ watch(
                   @fetch-request="handleFetch(row)"
                   @clear-row="clearRowData(row)"
                   @drag-start="onDragStart(index)"
+                  @delete-row="deleteRow(index)"
                 />
               </div>
             </VueDraggable>
@@ -1161,7 +1166,7 @@ watch(
 
 .table-header {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px 30px; /* 削除ボタン用の列を追加 */
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;
@@ -1386,21 +1391,6 @@ watch(
   .layout-wrapper {
     display: block;
   }
-  /* --- ▼▼▼ 変更点5: モバイルサイドバーのボタンスタイル（表示設定）を追加 ▼▼▼ --- */
-  .mobile-sidebar-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 20px;
-  }
-  .mobile-sidebar-actions .io-button {
-    width: 100%;
-    padding: 10px;
-    font-size: 1em;
-    text-align: center;
-  }
-  /* --- ▲▲▲ 変更点5 ▲▲▲ --- */
   .sidebar {
     position: fixed;
     top: 0;
@@ -1510,6 +1500,9 @@ watch(
   }
   :deep(.col-credits) {
     grid-area: 4 / 7 / 5 / 13;
+  }
+  :deep(.col-actions) {
+    grid-area: 1 / 12 / 2 / 13;
   }
 
   :deep(.col-category),
