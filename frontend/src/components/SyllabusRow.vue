@@ -59,6 +59,11 @@ const displayInstructorText = computed(() => {
   return instructors[0]
 })
 
+// 選択された評価に応じてCSSクラスを返すcomputedプロパティ
+const evaluationClass = computed(() => {
+  return props.evaluation ? `grade-${props.evaluation}` : ''
+})
+
 watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear, oldCode]) => {
   clearTimeout(debounceTimer.value)
   if (!newCode && oldCode) {
@@ -137,7 +142,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
         :value="evaluation"
         @change="$emit('update:evaluation', $event.target.value)"
         class="input-field eval-select"
-        :class="{ 'is-fail': evaluation === '不可' }"
+        :class="evaluationClass"
       >
         <option value="">--</option>
         <option value="秀">秀</option>
@@ -226,11 +231,41 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
   border-color: #d92c2c;
   box-shadow: 0 0 0 1px #d92c2c;
 }
-.input-field.is-fail {
-  border-color: #d92c2c;
-  color: #d92c2c;
+
+.eval-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #f7f7f7;
+  text-align: center;
   font-weight: bold;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
+
+/* 評価ごとの色設定 */
+.eval-select.grade-秀 {
+  background-color: #4caf50;
+  color: white;
+}
+.eval-select.grade-優 {
+  background-color: #8bc34a;
+  color: white;
+}
+.eval-select.grade-良 {
+  background-color: #cddc39;
+  color: black;
+}
+.eval-select.grade-可 {
+  background-color: #ffeb3b;
+  color: black;
+}
+.eval-select.grade-不可 {
+  background-color: #f44336;
+  color: white;
+}
+
 .loading-text {
   font-size: 0.9em;
   color: #555;
@@ -292,7 +327,6 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     grid-area: 2 / 1 / 3 / 13;
   }
 
-  /* ★ 修正箇所: 学年と担当者を3行目に並べて配置 */
   .course-details {
     grid-area: 3 / 1 / 4 / 7;
   }
@@ -300,7 +334,6 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     grid-area: 3 / 7 / 4 / 13;
   }
 
-  /* ★ 修正箇所: 評価と単位数を4行目に並べて配置 */
   .col-eval {
     grid-area: 4 / 1 / 5 / 7;
   }

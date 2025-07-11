@@ -4,13 +4,14 @@ import { VueDraggable } from 'vue-draggable-plus'
 import SyllabusRow from '../components/SyllabusRow.vue'
 import { fetchSyllabus } from '../services/syllabusApi.js'
 
-const STORAGE_KEY = 'gpa-calculator-data-v6' // バージョン更新
+const STORAGE_KEY = 'gpa-calculator-data-v5'
 const EVALUATION_RANGES = {
   秀: { minScore: 90, maxScore: 100 },
   優: { minScore: 80, maxScore: 89 },
   良: { minScore: 70, maxScore: 79 },
   可: { minScore: 60, maxScore: 69 },
 }
+const crclumcd = ref('s24160')
 const rows = ref([])
 const fileInput = ref(null)
 const rowRefs = ref([])
@@ -19,31 +20,66 @@ const rowRefs = ref([])
 const isMobileSidebarOpen = ref(false)
 const isFilterSidebarOpen = ref(true) // PC用フィルターサイドバー
 
+// フィルタリング用の状態（複数選択対応のため配列に変更）
 const selectedYears = ref([])
 const selectedTerms = ref([])
-const selectedEvaluations = ref([])
+const selectedCategories = ref([])
+const selectedEvaluations = ref([]) // 評価フィルター用の状態を追加
 
+// フィルタリングの選択肢を動的に生成
 const availableYears = computed(() =>
   [...new Set(rows.value.map((row) => row.rishunen).filter(Boolean))].sort((a, b) => b - a),
 )
 const availableTerms = computed(() =>
   [...new Set(rows.value.map((row) => row.syllabusData?.term).filter(Boolean))].sort(),
 )
-const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価']
+const availableCategories = computed(() =>
+  [
+    ...new Set(rows.value.map((row) => row.syllabusData?.category?.split('・')[0]).filter(Boolean)),
+  ].sort(),
+)
+const availableEvaluations = ['秀', '優', '良', '可', '不可', '未評価'] // 評価の選択肢
 
+// 行が表示されるべきかどうかを判断する関数（評価のロジックを追加）
 const shouldShowRow = (row) => {
   const yearMatch =
     selectedYears.value.length === 0 || (row.rishunen && selectedYears.value.includes(row.rishunen))
   const termMatch =
     selectedTerms.value.length === 0 ||
     (row.syllabusData?.term && selectedTerms.value.includes(row.syllabusData.term))
+  const categoryMatch =
+    selectedCategories.value.length === 0 ||
+    (row.syllabusData?.category &&
+      selectedCategories.value.includes(row.syllabusData.category.split('・')[0]))
   const evalMatch =
     selectedEvaluations.value.length === 0 ||
     (row.evaluation && selectedEvaluations.value.includes(row.evaluation)) ||
     (!row.evaluation && selectedEvaluations.value.includes('未評価'))
 
-  return yearMatch && termMatch && evalMatch
+  return yearMatch && termMatch && categoryMatch && evalMatch
 }
+
+// 評価別の単位数を計算
+const creditsByEvaluation = computed(() => {
+  const evalTotals = { 秀: 0, 優: 0, 良: 0, 可: 0, 不可: 0 }
+  for (const row of finalRowsForCalc.value) {
+    if (row.evaluation && row.syllabusData?.credits) {
+      const credits = Number(row.syllabusData.credits)
+      if (evalTotals.hasOwnProperty(row.evaluation)) {
+        evalTotals[row.evaluation] += credits
+      }
+    }
+  }
+  const maxCredits = Math.max(...Object.values(evalTotals), 1) // 0除算を避ける
+
+  const chartData = Object.entries(evalTotals).map(([grade, credits]) => ({
+    grade,
+    credits,
+    percentage: (credits / maxCredits) * 100,
+  }))
+
+  return { chartData }
+})
 
 onBeforeUpdate(() => {
   rowRefs.value = []
@@ -71,7 +107,7 @@ const saveToFile = () => {
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    const dataToSave = { rows: simplifiedRows }
+    const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }
     const jsonString = JSON.stringify(dataToSave, null, 2)
     const blob = new Blob([jsonString], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -111,11 +147,12 @@ const handleFileLoad = (event) => {
             })
           }
         }
-        loadedData = { rows: simplifiedRows }
+        loadedData = { rows: simplifiedRows, crclumcd: crclumcd.value }
       } else {
         loadedData = JSON.parse(content)
       }
       if (loadedData && Array.isArray(loadedData.rows)) {
+        crclumcd.value = loadedData.crclumcd || crclumcd.value
         const newRows = loadedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -232,7 +269,6 @@ const gpaStats = computed(() => {
     avgGpa: avgGpa.toFixed(3),
   }
 })
-
 const groupedAndSortedCreditsByTerm = computed(() => {
   const termTotals = {}
   for (const row of finalRowsForCalc.value) {
@@ -298,6 +334,7 @@ const handleFetch = async (row) => {
     const data = await fetchSyllabus({
       kougicd: row.kougicd,
       rishunen: row.rishunen,
+      crclumcd: crclumcd.value,
     })
     row.syllabusData = data
   } catch (e) {
@@ -339,6 +376,7 @@ onMounted(() => {
     try {
       const savedData = JSON.parse(savedDataString)
       if (savedData.rows.length > 0) {
+        crclumcd.value = savedData.crclumcd
         const newRows = savedData.rows.map((simpleRow, index) => ({
           id: index,
           rishunen: simpleRow.rishunen,
@@ -377,7 +415,7 @@ watch(
         kougicd: row.kougicd,
         evaluation: row.evaluation || '',
       }))
-    const dataToSave = { rows: simplifiedRows }
+    const dataToSave = { crclumcd: crclumcd.value, rows: simplifiedRows }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
     if (newRows.length > 0) {
       const lastRow = newRows[newRows.length - 1]
@@ -426,6 +464,10 @@ watch(
               style="display: none"
             />
           </div>
+          <div class="global-input" title="s+学籍番号上5桁">
+            <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
+            <input id="crclumcd" v-model="crclumcd" />
+          </div>
         </div>
         <!-- モバイル用サイドバー開閉ボタン -->
         <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
@@ -472,6 +514,20 @@ watch(
             </div>
           </div>
           <div class="filter-group">
+            <label>分野系列</label>
+            <div class="checkbox-group">
+              <div v-for="cat in availableCategories" :key="cat" class="checkbox-item">
+                <input
+                  type="checkbox"
+                  :id="`cat-${cat}`"
+                  :value="cat"
+                  v-model="selectedCategories"
+                />
+                <label :for="`cat-${cat}`">{{ cat }}</label>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group filter-group-evaluation">
             <label>評価</label>
             <div class="checkbox-group">
               <div v-for="ev in availableEvaluations" :key="ev" class="checkbox-item">
@@ -535,6 +591,24 @@ watch(
                     </div>
                   </div>
                   <div class="filter-group">
+                    <label>分野系列</label>
+                    <div class="checkbox-group">
+                      <div
+                        v-for="cat in availableCategories"
+                        :key="`mobile-cat-${cat}`"
+                        class="checkbox-item"
+                      >
+                        <input
+                          type="checkbox"
+                          :id="`mobile-cat-${cat}`"
+                          :value="cat"
+                          v-model="selectedCategories"
+                        />
+                        <label :for="`mobile-cat-${cat}`">{{ cat }}</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="filter-group filter-group-evaluation">
                     <label>評価</label>
                     <div class="checkbox-group">
                       <div
@@ -562,6 +636,7 @@ watch(
               <div class="col-year">年度</div>
               <div class="col-code">講義コード</div>
               <div class="col-term">学期</div>
+              <div class="col-category">分野系列</div>
               <div class="col-info">講義名</div>
               <div class="col-instructors">担当者</div>
               <div class="col-credits">単位数</div>
@@ -591,6 +666,7 @@ watch(
                   :error="row.error"
                   :is-duplicate="rowMetadata[row.id]?.isDuplicate"
                   :is-older-attempt="rowMetadata[row.id]?.isOlderAttempt"
+                  :crclumcd="crclumcd"
                   @fetch-request="handleFetch(row)"
                   @clear-row="clearRowData(row)"
                   @drag-start="onDragStart(index)"
@@ -604,68 +680,81 @@ watch(
             <button @click="isMobileSidebarOpen = false" class="mobile-sidebar-close">
               &times;
             </button>
-            <div class="sidebar-content-wrapper">
-              <section class="gpa-display">
-                <div class="gpa-item">
-                  <div class="gpa-label">f-GPA</div>
-                  <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
-                  <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
+            <section class="gpa-display">
+              <div class="gpa-item">
+                <div class="gpa-label">f-GPA</div>
+                <div class="gpa-main-value">{{ gpaStats.avgGpa }}</div>
+                <div class="gpa-range">({{ gpaStats.minGpa }} ~ {{ gpaStats.maxGpa }})</div>
+              </div>
+              <div class="gpa-item">
+                <div class="gpa-label">単位数</div>
+                <div class="gpa-main-value">
+                  {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
+                  <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0"
+                    >(+{{ gpaStats.totalInProgressCredits }})</span
+                  >
                 </div>
-                <div class="gpa-item">
-                  <div class="gpa-label">単位数</div>
-                  <div class="gpa-main-value">
-                    {{ gpaStats.totalEarnedCredits }} / {{ gpaStats.totalAttemptedCredits }}
-                    <span class="in-progress-credits" v-if="gpaStats.totalInProgressCredits > 0"
-                      >(+{{ gpaStats.totalInProgressCredits }})</span
-                    >
-                  </div>
-                  <div class="gpa-range">
-                    取得率: {{ gpaStats.currentRate }}%
-                    <span v-if="gpaStats.totalInProgressCredits > 0"
-                      >({{ gpaStats.prospectiveRate }}%)</span
-                    >
+                <div class="gpa-range">
+                  取得率: {{ gpaStats.currentRate }}%
+                  <span v-if="gpaStats.totalInProgressCredits > 0"
+                    >({{ gpaStats.prospectiveRate }}%)</span
+                  >
+                </div>
+              </div>
+            </section>
+            <div class="stats-container">
+              <section class="evaluation-credits-display">
+                <h3>取得単位数（評価別）</h3>
+                <div class="evaluation-grid">
+                  <div
+                    v-for="item in creditsByEvaluation.chartData"
+                    :key="item.grade"
+                    class="evaluation-bar-item"
+                  >
+                    <span class="grade-label">{{ item.grade }}</span>
+                    <div class="bar-container">
+                      <div
+                        class="bar"
+                        :class="`grade-${item.grade}`"
+                        :style="{ width: item.percentage + '%' }"
+                      ></div>
+                    </div>
+                    <span class="credits-value">{{ item.credits }}</span>
                   </div>
                 </div>
               </section>
-              <div class="stats-container">
-                <section class="term-credits-display">
-                  <h3>単位数（開講時期別）</h3>
-                  <div class="term-grid">
-                    <div
-                      v-for="group in groupedAndSortedCreditsByTerm"
-                      :key="group.year"
-                      class="year-group"
-                    >
-                      <div class="year-header">
-                        <h4>{{ group.year }}年度</h4>
-                        <span class="year-total"
-                          >{{ group.yearStats.earned }} / {{ group.yearStats.attempted }}
-                          <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0"
-                            >(+{{ group.yearStats.inProgress }})</span
-                          >
-                          単位</span
+              <section class="term-credits-display">
+                <h3>単位数（開講時期別）</h3>
+                <div class="term-grid">
+                  <div
+                    v-for="group in groupedAndSortedCreditsByTerm"
+                    :key="group.year"
+                    class="year-group"
+                  >
+                    <div class="year-header">
+                      <h4>{{ group.year }}年度</h4>
+                      <span class="year-total"
+                        >{{ group.yearStats.earned }} / {{ group.yearStats.attempted }}
+                        <span class="in-progress-credits" v-if="group.yearStats.inProgress > 0"
+                          >(+{{ group.yearStats.inProgress }})</span
                         >
-                      </div>
-                      <div v-for="item in group.terms" :key="item.termName" class="term-item">
-                        <span class="term-name">{{ item.termName }}</span>
-                        <span class="term-value"
-                          >{{ item.stats.earned }} / {{ item.stats.attempted }}
-                          <span class="in-progress-credits" v-if="item.stats.inProgress > 0"
-                            >(+{{ item.stats.inProgress }})</span
-                          >
-                          単位</span
+                        単位</span
+                      >
+                    </div>
+                    <div v-for="item in group.terms" :key="item.termName" class="term-item">
+                      <span class="term-name">{{ item.termName }}</span>
+                      <span class="term-value"
+                        >{{ item.stats.earned }} / {{ item.stats.attempted }}
+                        <span class="in-progress-credits" v-if="item.stats.inProgress > 0"
+                          >(+{{ item.stats.inProgress }})</span
                         >
-                      </div>
+                        単位</span
+                      >
                     </div>
                   </div>
-                </section>
-              </div>
+                </div>
+              </section>
             </div>
-            <!-- ★ 修正箇所: ファイル操作ボタンをサイドバーの最後に移動 -->
-            <section class="mobile-file-operations">
-              <button @click="saveToFile" class="io-button">ファイルに保存</button>
-              <button @click="triggerFileInput" class="io-button">ファイルから読込</button>
-            </section>
           </aside>
         </div>
         <!-- オーバーレイ -->
@@ -790,18 +879,68 @@ watch(
   grid-template-columns: 1fr;
   gap: 20px;
 }
+.evaluation-credits-display,
+.category-credits-display,
 .term-credits-display {
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   padding: 16px;
 }
+.evaluation-credits-display h3,
+.category-credits-display h3,
 .term-credits-display h3 {
   margin-top: 0;
   margin-bottom: 12px;
   font-size: 1.1em;
   border-bottom: 1px solid #ccc;
   padding-bottom: 8px;
+}
+.evaluation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.9em;
+}
+.evaluation-bar-item {
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  gap: 8px;
+  align-items: center;
+}
+.grade-label {
+  font-weight: bold;
+  text-align: center;
+}
+.bar-container {
+  background-color: #e9ecef;
+  border-radius: 4px;
+  height: 16px;
+  width: 100%;
+}
+.bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease-in-out;
+}
+.credits-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bar.grade-秀 {
+  background-color: #4caf50;
+}
+.bar.grade-優 {
+  background-color: #8bc34a;
+}
+.bar.grade-良 {
+  background-color: #cddc39;
+}
+.bar.grade-可 {
+  background-color: #ffeb3b;
+}
+.bar.grade-不可 {
+  background-color: #f44336;
 }
 .term-grid {
   display: flex;
@@ -884,9 +1023,42 @@ watch(
   white-space: normal;
 }
 
+/* --- 評価フィルターのカラーリング --- */
+.filter-group-evaluation .checkbox-item label::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  border: 1px solid #ccc;
+}
+.filter-group-evaluation .checkbox-item input:checked + label::before {
+  outline: 2px solid #007bff;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-秀']::before {
+  background-color: #4caf50;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-優']::before {
+  background-color: #8bc34a;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-良']::before {
+  background-color: #cddc39;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-可']::before {
+  background-color: #ffeb3b;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-不可']::before {
+  background-color: #f44336;
+}
+.filter-group-evaluation .checkbox-item label[for*='eval-未評価']::before {
+  background-color: #e0e0e0;
+}
+
 .table-header {
   display: grid;
-  grid-template-columns: 30px 30px 60px 100px 100px 1fr 120px 50px 80px;
+  grid-template-columns: 30px 30px 60px 100px 100px 160px 1fr 120px 50px 80px;
   gap: 12px;
   font-weight: bold;
   border-bottom: 2px solid #333;
@@ -898,6 +1070,7 @@ watch(
   text-align: center;
 }
 .table-header .col-info,
+.table-header .col-category,
 .table-header .col-instructors {
   text-align: left;
 }
@@ -920,9 +1093,6 @@ watch(
   display: none;
 }
 .mobile-filter-controls {
-  display: none;
-}
-.mobile-file-operations {
   display: none;
 }
 
@@ -1042,9 +1212,11 @@ watch(
     z-index: 1000;
     padding: 20px;
     padding-top: 50px;
+    overflow-y: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    gap: 20px;
   }
   .sidebar.mobile-is-open {
     transform: translateX(0);
@@ -1088,28 +1260,103 @@ watch(
     background-color: #fff;
   }
 
-  /* ★ 修正箇所: サイドバーのコンテンツラッパー */
-  .sidebar-content-wrapper {
-    flex-grow: 1;
-    overflow-y: auto; /* コンテンツが多すぎる場合にスクロールさせる */
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  :deep(.syllabus-row) {
+    display: grid;
+    grid-template-columns: auto auto repeat(10, 1fr);
+    gap: 8px 10px;
+    padding: 12px;
+    align-items: center;
+  }
+  :deep(.syllabus-row > div) {
+    padding: 0;
+    border: none;
+    text-align: left;
+  }
+  :deep(.syllabus-row > div::before) {
+    content: attr(data-label);
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 4px;
+    display: block;
   }
 
-  /* ★ 修正箇所: モバイル用ファイル操作ボタンのスタイルを適用 */
-  .mobile-file-operations {
-    display: flex;
-    gap: 10px;
+  :deep(.col-handle) {
+    grid-area: 1 / 1;
+  }
+  :deep(.col-index) {
+    grid-area: 1 / 2;
+    font-weight: bold;
+  }
+  :deep(.col-year) {
+    grid-area: 1 / 3 / 1 / 6;
+  }
+  :deep(.col-code) {
+    grid-area: 1 / 6 / 1 / 10;
+  }
+  :deep(.col-term) {
+    grid-area: 1 / 10 / 1 / 13;
+  }
+  :deep(.col-info) {
+    grid-area: 2 / 1 / 2 / 13;
+  }
+  :deep(.col-category) {
+    grid-area: 3 / 1 / 3 / 8;
+  }
+  :deep(.col-instructors) {
+    grid-area: 3 / 8 / 3 / 13;
+  }
+  :deep(.col-eval) {
+    grid-area: 4 / 1 / 4 / 8;
+  }
+  :deep(.col-credits) {
+    grid-area: 4 / 8 / 4 / 13;
+    text-align: right;
+  }
+  :deep(.col-gpa) {
+    grid-area: 5 / 1 / 5 / 8;
+  }
+
+  :deep(.col-category),
+  :deep(.col-instructors) {
+    font-size: 0.9em;
+    color: #555;
+  }
+  :deep(.col-category select),
+  :deep(.col-instructors input) {
+    color: #555;
+    font-size: 1em;
+  }
+  :deep(.col-handle)::before,
+  :deep(.col-index)::before,
+  :deep(.col-year)::before,
+  :deep(.col-code)::before,
+  :deep(.col-term)::before {
+    display: none;
+  }
+  :deep(.col-credits)::before,
+  :deep(.col-gpa)::before {
+    text-align: left;
+  }
+  :deep(.col-credits .credits-input) {
+    display: inline-block;
+    width: 4em;
+    vertical-align: middle;
+  }
+  :deep(.col-credits)::after {
+    content: '単位';
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  :deep(input),
+  :deep(select) {
+    font-size: 1em;
+    padding: 6px;
+    background-color: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 4px;
     width: 100%;
-    margin-top: auto; /* これにより一番下に配置される */
-    padding-top: 20px; /* 上の要素との間にスペースを設ける */
-    border-top: 1px solid #eee; /* 区切り線 */
-  }
-
-  .mobile-file-operations .io-button {
-    flex-grow: 1;
-    padding: 10px;
+    box-sizing: border-box;
   }
 }
 </style>
