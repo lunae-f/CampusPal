@@ -333,7 +333,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 @media (max-width: 1023px) {
   .syllabus-row {
     display: grid;
-    grid-template-columns: auto repeat(11, 1fr); /* 12分割グリッド */
+    grid-template-columns: auto repeat(12, 1fr); /* 13分割グリッド */
     gap: 8px 10px;
     padding: 12px;
     border: 1px solid #ddd;
@@ -353,13 +353,16 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     font-weight: bold;
   }
   .col-year {
-    grid-area: 1 / 3 / 2 / 7;
+    grid-area: 1 / 3 / 2 / 6;
   }
   .col-code {
-    grid-area: 1 / 7 / 2 / 12; /* 削除ボタン用に調整 */
+    grid-area: 1 / 6 / 2 / 10;
+  }
+  .col-eval {
+    grid-area: 1 / 10 / 2 / 13;
   }
   .col-actions {
-    grid-area: 1 / 12 / 2 / 13;
+    grid-area: 1 / 13 / 2 / 14;
   }
 
   .col-term {
@@ -367,21 +370,17 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
   }
 
   .course-name {
-    grid-area: 2 / 1 / 3 / 13;
+    grid-area: 2 / 1 / 3 / 14;
   }
 
-  .course-details {
+  .col-instructors {
     grid-area: 3 / 1 / 4 / 7;
   }
-  .col-instructors {
-    grid-area: 3 / 7 / 4 / 13;
-  }
-
-  .col-eval {
-    grid-area: 4 / 1 / 5 / 7;
+  .course-details {
+    grid-area: 3 / 7 / 4 / 10;
   }
   .col-credits {
-    grid-area: 4 / 7 / 5 / 13;
+    grid-area: 3 / 10 / 4 / 14;
   }
 
   .course-details,

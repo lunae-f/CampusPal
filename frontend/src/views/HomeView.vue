@@ -1225,6 +1225,8 @@ watch(
 /* --- ▼▼▼ 変更点4: モバイルサイドバーのボタンスタイル（デフォルト非表示）を追加 ▼▼▼ --- */
 .mobile-sidebar-actions {
   display: none;
+  flex-direction: column;
+  gap: 10px;
 }
 /* --- ▲▲▲ 変更点4 ▲▲▲ --- */
 
@@ -1387,6 +1389,9 @@ watch(
     border: none;
     cursor: pointer;
     padding: 8px;
+  }
+  .mobile-sidebar-actions {
+    display: flex;
   }
   .layout-wrapper {
     display: block;
