@@ -267,7 +267,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
   box-sizing: border-box;
 }
 .input-field.is-invalid {
-  border-color: #d92c2c;
+  border-color: #d92cq2c;
   box-shadow: 0 0 0 1px #d92c2c;
 }
 
@@ -285,23 +285,23 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 
 /* 評価ごとの色設定 */
 .eval-select.grade-秀 {
-  background-color: #4caf50;
+  background-color: green;
   color: white;
 }
 .eval-select.grade-優 {
-  background-color: #8bc34a;
-  color: white;
+  background-color: lightgreen;
+  color: black;
 }
 .eval-select.grade-良 {
-  background-color: #cddc39;
+  background-color: gold;
   color: black;
 }
 .eval-select.grade-可 {
-  background-color: #ffeb3b;
+  background-color: orange;
   color: black;
 }
 .eval-select.grade-不可 {
-  background-color: #f44336;
+  background-color: red;
   color: white;
 }
 
@@ -322,7 +322,6 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 }
 .course-details {
   font-size: 0.9em;
-  color: #555;
   margin-top: 4px;
 }
 .error-message {
@@ -333,7 +332,7 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
 @media (max-width: 1023px) {
   .syllabus-row {
     display: grid;
-    grid-template-columns: auto repeat(12, 1fr); /* 13分割グリッド */
+    grid-template-columns: auto auto repeat(11, 1fr);
     gap: 8px 10px;
     padding: 12px;
     border: 1px solid #ddd;
@@ -365,28 +364,28 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
     grid-area: 1 / 13 / 2 / 14;
   }
 
-  .col-term {
-    display: none;
-  }
-
   .course-name {
     grid-area: 2 / 1 / 3 / 14;
   }
 
   .col-instructors {
-    grid-area: 3 / 1 / 4 / 7;
+    grid-area: 3 / 1 / 4 / 5;
   }
   .course-details {
-    grid-area: 3 / 7 / 4 / 10;
+    grid-area: 3 / 5 / 4 / 8;
   }
+
+  .col-term {
+    grid-area: 3 / 8 / 4 / 14;
+  }
+
   .col-credits {
-    grid-area: 3 / 10 / 4 / 14;
+    grid-area: 3 / 12 / 4 / 14;
   }
 
   .course-details,
   .col-instructors,
-  .col-credits,
-  .col-eval {
+  .col-credits {
     padding: 0;
     border: none;
     text-align: left;
@@ -395,12 +394,11 @@ watch([() => props.rishunen, () => props.kougicd], ([newYear, newCode], [oldYear
   }
   .course-details::before,
   .col-instructors::before,
-  .col-credits::before,
-  .col-eval::before {
+  .col-credits::before {
     content: attr(data-label);
     font-size: 0.8em;
     color: #666;
-    margin-bottom: 4px;
+    margin-bottom: 3.7px;
     display: block;
   }
 }

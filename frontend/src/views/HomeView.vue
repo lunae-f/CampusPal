@@ -581,10 +581,6 @@ watch(
             />
             <button @click="isPasteModalOpen = true" class="io-button">時間割を貼付</button>
           </div>
-          <div class="global-input" title="s+学籍番号上5桁">
-            <label for="crclumcd" class="tooltip-label">カリキュラムコード:</label>
-            <input id="crclumcd" v-model="crclumcd" />
-          </div>
         </div>
         <button @click="isMobileSidebarOpen = true" class="mobile-sidebar-toggle">
           <svg
@@ -1036,19 +1032,19 @@ watch(
   font-variant-numeric: tabular-nums;
 }
 .bar.grade-秀 {
-  background-color: #4caf50;
+  background-color: green;
 }
 .bar.grade-優 {
-  background-color: #8bc34a;
+  background-color: lightgreen;
 }
 .bar.grade-良 {
-  background-color: #cddc39;
+  background-color: gold;
 }
 .bar.grade-可 {
-  background-color: #ffeb3b;
+  background-color: orange;
 }
 .bar.grade-不可 {
-  background-color: #f44336;
+  background-color: red;
 }
 .term-grid {
   display: flex;
@@ -1146,19 +1142,19 @@ watch(
   outline: 2px solid #007bff;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-秀']::before {
-  background-color: #4caf50;
+  background-color: green;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-優']::before {
-  background-color: #8bc34a;
+  background-color: lightgreen;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-良']::before {
-  background-color: #cddc39;
+  background-color: gold;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-可']::before {
-  background-color: #ffeb3b;
+  background-color: orange;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-不可']::before {
-  background-color: #f44336;
+  background-color: red;
 }
 .filter-group-evaluation .checkbox-item label[for*='eval-未評価']::before {
   background-color: #e0e0e0;
@@ -1470,50 +1466,10 @@ watch(
     border: none;
     text-align: left;
   }
-  :deep(.syllabus-row > div::before) {
-    content: attr(data-label);
-    font-size: 0.8em;
-    color: #666;
-    margin-bottom: 4px;
-    display: block;
-  }
-
-  :deep(.col-handle) {
-    grid-area: 1 / 1;
-  }
-  :deep(.col-index) {
-    grid-area: 1 / 2;
-    font-weight: bold;
-  }
-  :deep(.col-year) {
-    grid-area: 1 / 3 / 1 / 6;
-  }
-  :deep(.col-code) {
-    grid-area: 1 / 6 / 1 / 10;
-  }
-  :deep(.col-term) {
-    grid-area: 1 / 10 / 1 / 13;
-  }
-  :deep(.col-info) {
-    grid-area: 2 / 1 / 2 / 13;
-  }
-  :deep(.col-instructors) {
-    grid-area: 3 / 1 / 3 / 13;
-  }
-  :deep(.col-eval) {
-    grid-area: 4 / 1 / 4 / 7;
-  }
-  :deep(.col-credits) {
-    grid-area: 4 / 7 / 5 / 13;
-  }
-  :deep(.col-actions) {
-    grid-area: 1 / 12 / 2 / 13;
-  }
 
   :deep(.col-category),
   :deep(.col-instructors) {
     font-size: 0.9em;
-    color: #555;
   }
   :deep(.col-category select),
   :deep(.col-instructors input) {
