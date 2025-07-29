@@ -1,5 +1,5 @@
 # CampusPal
-Course Management and f-GPA Calculator for TCU.
+東京都市大学の履修システム(Campusmate-J)に対応した、履修管理・f-GPA計算ツールです。
 
 ## Deploy
 
