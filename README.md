@@ -1,5 +1,5 @@
 # CampusPal
-東京都市大学の履修システム(Campusmate-J)に対応した、履修管理・f-GPA計算ツールです。
+[東京都市大学の履修システム](https://websrv.tcu.ac.jp/tcu_web_v3/top.do)に対応した、履修管理・f-GPA計算ツールです。
 
 ## Deploy
 
